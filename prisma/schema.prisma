@@ -12,3 +12,119 @@ datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
 }
+
+model Admin {
+  id          Int      @id @default(autoincrement())
+  image       String
+  first_name  String
+  last_name   String
+  username    String   @unique
+  password    String
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  ToT ToT[] @relation(name: "AdminToT")
+  // make relation for COC
+  Collected_meditations Collected_meditations[] @relation(name: "Admin_coc")
+  // research 
+  Research Research[] @relation(name: "Admin_research")
+
+  Articel Articel[] @relation(name: "admin_articel")
+
+  Shop Shop[] @relation(name: "Admin_shop")
+
+  Glosarium Glosarium[] @relation(name: "Admin_glosarium")
+}
+
+model ToT {
+  id              Int      @id @default(autoincrement())
+  admin_id        Int
+  image           String?
+  philosofer      String
+  geoorigin       String
+  detail_location String
+  years           String
+  //relation to model admin 
+  admin Admin @relation(fields: [admin_id],references: [id], name: "AdminToT")
+
+  ToT_meta ToT_meta[] @relation(name: "ToT_meta")
+
+  Reading_guidline Reading_guidline[] @relation(name: "ToT_guide")
+}
+
+model ToT_meta {
+  id              Int      @id @default(autoincrement())
+  ToT_id          Int
+  metafisika      String
+  epsimologi      String
+  aksiologi       String
+  conclusion      String
+  // relation to model TOT
+  tot ToT @relation(fields: [ToT_id],references: [id],name: "ToT_meta")
+}
+
+model Reading_guidline {
+  id              Int      @id @default(autoincrement())
+  ToT_id          Int
+  title           String
+  author          String
+  publisher       String
+  year            String
+  detailed        String
+  // relation to model TOT
+  tot ToT @relation(fields: [ToT_id],references: [id],name: "ToT_guide")
+}
+
+model Collected_meditations {
+  id          Int      @id @default(autoincrement())
+  admin_id    Int
+  image       String?
+  dialog      String
+  judul       String
+  //realtion to model admin
+  admin Admin @relation(fields: [admin_id],references: [id],name: "Admin_coc")
+}
+
+model Research{
+  id              Int @id @default(autoincrement())
+  admin_id        Int
+  research_title  String
+  research_sum    String
+  researcher      String
+  research_date   DateTime
+  //relation to model admin
+  admin Admin @relation(fields: [admin_id],references: [id],name: "Admin_research")
+}
+
+model Articel {
+  id              Int @id @default(autoincrement())
+  admin_id        Int
+  title           String
+  image           String
+  content         String
+  author          String
+  date            DateTime
+  // relation with admin
+  admin Admin @relation(fields: [admin_id],references: [id],name: "admin_articel")
+}
+
+model Shop {
+  id              Int @id @default(autoincrement())
+  admin_id        Int
+  stock           String
+  title           String
+  category        String
+  price           String
+  link            String
+  desc            String
+  image           String
+  // relation
+  admin Admin @relation(fields: [admin_id],references: [id],name: "Admin_shop")
+}
+
+model Glosarium {
+  id              Int @id @default(autoincrement())
+  admin_id        Int
+  term            String
+  definition      String
+  admin Admin @relation(fields: [admin_id],references: [id],name: "Admin_glosarium")
+}
