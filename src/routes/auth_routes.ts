@@ -13,26 +13,19 @@ import {
 const router = express.Router();
 const authController = new AuthController();
 
-// Public routes (tidak memerlukan authentication)
 router.post(
   "/register",
   upload.single("image"),
-  validateAdminRegistration, // ganti validateRegistration -> validateAdminRegistration
+  validateAdminRegistration,
   authController.register
 );
 
-router.post(
-  "/login",
-  rateLimitLogin,
-  validateAdminLogin, // ganti validateLogin -> validateAdminLogin
-  authController.login
-);
+router.post("/login", rateLimitLogin, validateAdminLogin, authController.login);
 
-// Protected routes (memerlukan authentication)
 router.put(
   "/change-password",
   authenticate,
-  validatePasswordChange, // tambahkan validasi ganti password!
+  validatePasswordChange,
   authController.changePassword
 );
 
@@ -42,7 +35,7 @@ router.put(
   "/profile",
   authenticate,
   upload.single("image"),
-  validateAdminUpdate, // validasi update profile
+  validateAdminUpdate,
   authController.updateProfile
 );
 
