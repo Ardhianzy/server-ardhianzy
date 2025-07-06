@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -22,16 +16,13 @@ model Admin {
   password    String
   created_at  DateTime @default(now())
   updated_at  DateTime @updatedAt
+  
+  // Relations
   ToT ToT[] @relation(name: "AdminToT")
-  // make relation for COC
   Collected_meditations Collected_meditations[] @relation(name: "Admin_coc")
-  // research 
   Research Research[] @relation(name: "Admin_research")
-
-  Articel Articel[] @relation(name: "admin_articel")
-
+  Article Article[] @relation(name: "admin_article")
   Shop Shop[] @relation(name: "Admin_shop")
-
   Glosarium Glosarium[] @relation(name: "Admin_glosarium")
 }
 
@@ -43,12 +34,21 @@ model ToT {
   geoorigin       String
   detail_location String
   years           String
-  //relation to model admin 
-  admin Admin @relation(fields: [admin_id],references: [id], name: "AdminToT")
+  
+  slug             String   @unique
+  meta_title       String?
+  meta_description String?
+  keywords         String?
 
+  is_published     Boolean  @default(false)
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  
+  // Relations
+  admin Admin @relation(fields: [admin_id], references: [id], name: "AdminToT")
   ToT_meta ToT_meta[] @relation(name: "ToT_meta")
-
   Reading_guidline Reading_guidline[] @relation(name: "ToT_guide")
+  @@map("tot")
 }
 
 model ToT_meta {
@@ -58,8 +58,10 @@ model ToT_meta {
   epsimologi      String
   aksiologi       String
   conclusion      String
-  // relation to model TOT
-  tot ToT @relation(fields: [ToT_id],references: [id],name: "ToT_meta")
+  
+
+  tot ToT @relation(fields: [ToT_id], references: [id], name: "ToT_meta")
+  @@map("tot_meta")
 }
 
 model Reading_guidline {
@@ -70,8 +72,9 @@ model Reading_guidline {
   publisher       String
   year            String
   detailed        String
-  // relation to model TOT
-  tot ToT @relation(fields: [ToT_id],references: [id],name: "ToT_guide")
+  
+  tot ToT @relation(fields: [ToT_id], references: [id], name: "ToT_guide")
+  @@map("reading_guidline")
 }
 
 model Collected_meditations {
@@ -80,31 +83,73 @@ model Collected_meditations {
   image       String?
   dialog      String
   judul       String
-  //realtion to model admin
-  admin Admin @relation(fields: [admin_id],references: [id],name: "Admin_coc")
+
+  slug             String?   @unique
+  meta_title       String?
+  meta_description String?
+  is_published     Boolean   @default(false)
+  
+  created_at  DateTime @default(now())
+  updated_at  DateTime @updatedAt
+  
+  admin Admin @relation(fields: [admin_id], references: [id], name: "Admin_coc")
+  @@map("collected_meditations")
 }
 
-model Research{
-  id              Int @id @default(autoincrement())
-  admin_id        Int
-  research_title  String
-  research_sum    String
-  researcher      String
-  research_date   DateTime
-  //relation to model admin
-  admin Admin @relation(fields: [admin_id],references: [id],name: "Admin_research")
+model Research {
+  id             Int      @id @default(autoincrement())
+  admin_id       Int
+  research_title String
+  slug           String   @unique
+  research_sum   String
+  image          String
+  researcher     String
+  research_date  DateTime
+  
+  // SEO Fields
+  meta_title       String?
+  meta_description String?
+  keywords         String?
+  
+  // Timestamps
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  
+  // Status
+  is_published Boolean @default(false)
+  
+  // Relation
+  admin Admin @relation(fields: [admin_id], references: [id], name: "Admin_research")
+  
+  @@map("researches")
 }
 
-model Articel {
-  id              Int @id @default(autoincrement())
-  admin_id        Int
-  title           String
-  image           String
-  content         String
-  author          String
-  date            DateTime
-  // relation with admin
-  admin Admin @relation(fields: [admin_id],references: [id],name: "admin_articel")
+model Article {
+  id       Int    @id @default(autoincrement())
+  admin_id Int
+  title    String
+  slug     String @unique
+  image    String
+  content  String
+  author   String
+  date     DateTime
+  
+  meta_title       String?
+  meta_description String?
+  keywords         String?
+  excerpt          String?
+  canonical_url      String?
+  
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+  
+  is_published Boolean @default(false)
+  is_featured  Boolean @default(false)
+  view_count   Int     @default(0)
+  
+  admin Admin @relation(fields: [admin_id], references: [id], name: "admin_article")
+  
+  @@map("articles")
 }
 
 model Shop {
@@ -117,8 +162,17 @@ model Shop {
   link            String
   desc            String
   image           String
-  // relation
-  admin Admin @relation(fields: [admin_id],references: [id],name: "Admin_shop")
+  
+  slug             String?   @unique
+  meta_title       String?
+  meta_description String?
+  is_available     Boolean   @default(true)
+  
+  created_at      DateTime @default(now())
+  updated_at      DateTime @updatedAt
+  
+  admin Admin @relation(fields: [admin_id], references: [id], name: "Admin_shop")
+  @@map("shops")
 }
 
 model Glosarium {
@@ -126,5 +180,22 @@ model Glosarium {
   admin_id        Int
   term            String
   definition      String
-  admin Admin @relation(fields: [admin_id],references: [id],name: "Admin_glosarium")
+  
+  slug             String   @unique
+  meta_title       String?
+  meta_description String?
+  keywords         String?
+  
+  etymology        String?  
+  examples         String?  
+  related_terms    String?    
+
+  is_published     Boolean  @default(false)
+  
+  created_at       DateTime @default(now())
+  updated_at       DateTime @updatedAt
+  
+  admin Admin @relation(fields: [admin_id], references: [id], name: "Admin_glosarium")
+  
+  @@map("glosarium")
 }

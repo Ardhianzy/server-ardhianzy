@@ -33,6 +33,7 @@ export const authenticate = async (
     };
 
     req.user = decoded; // Sekarang sudah compatible
+    req.admin = decoded;
     next();
   } catch (error) {
     res.status(401).json({
