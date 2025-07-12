@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { ResearchHandler } from "../feature/research/handler/crud_res";
-import { authenticate } from "../middleware/auth_middleware";
+import { authenticate } from "../middleware/authenticate";
 import upload from "../middleware/multer";
 
 const router = Router();

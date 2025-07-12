@@ -1,7 +1,7 @@
 import express from "express";
 import upload from "../middleware/multer";
-import { authenticate } from "../middleware/auth_middleware";
-import { AuthController } from "../admin/auth_controller";
+import { authenticate } from "../middleware/authenticate";
+import { AuthController } from "../admin/authenticate";
 import { rateLimitLogin } from "../middleware/validation_middleware";
 import {
   validateAdminRegistration,

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { GlosariumHandler } from "../feature/glosarium/handler/crud_glo";
-import { authenticate } from "../middleware/auth_middleware";
+import { authenticate } from "../middleware/authenticate";
 
 const router = Router();
 const glosariumHandler = new GlosariumHandler();

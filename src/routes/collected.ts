@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { CollectedMeditationsHandler } from "../feature/collected_meditaions/handler/crud_handler";
-import { authenticate } from "../middleware/auth_middleware";
+import { authenticate } from "../middleware/authenticate";
 import upload from "../middleware/multer";
 
 const router = Router();
