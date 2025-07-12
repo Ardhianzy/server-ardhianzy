@@ -9,7 +9,16 @@
     "forceConsistentCasingInFileNames": true,
     "strict": true,
     "skipLibCheck": true,
-    "resolveJsonModule": true
+    "resolveJsonModule": true,
+    "baseUrl": "src",
+    "paths": {
+      "@routes/*": ["routes/*"],
+      "@middleware/*": ["middleware/*"],
+      "@config/*": ["config/*"],
+      "@feature/*": ["feature/*"],
+      "@libs/*": ["libs/*"],
+      "@utils/*": ["utils/*"]
+    }
   },
   "include": ["src/**/*"],
   "exclude": ["node_modules", "dist"]
