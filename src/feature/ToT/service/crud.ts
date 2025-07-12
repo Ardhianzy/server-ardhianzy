@@ -10,6 +10,10 @@ interface CreateTotData {
   geoorigin: string;
   detail_location: string;
   years: string;
+  meta_title?: string;
+  meta_description?: string;
+  keywords?: string;
+  is_published?: boolean;
   admin_id: number;
 }
 
@@ -20,6 +24,10 @@ interface UpdateTotData {
   geoorigin?: string;
   detail_location?: string;
   years?: string;
+  meta_title?: string;
+  meta_description?: string;
+  keywords?: string;
+  is_published?: boolean;
 }
 
 // Interface untuk Pagination
@@ -93,6 +101,10 @@ export class TotService {
       detail_location: totData.detail_location,
       years: totData.years,
       image: imageUrl,
+      meta_title: totData.meta_title,
+      meta_description: totData.meta_description,
+      keywords: totData.keywords,
+      is_published: totData.is_published,
     });
   }
 
@@ -106,6 +118,19 @@ export class TotService {
   // Get ToT by ID
   async getById(id: number): Promise<ToT> {
     const tot = await this.repo.getById(id);
+    if (!tot) {
+      throw new Error("ToT not found");
+    }
+    return tot;
+  }
+
+  // Get ToT by Philosofer
+  async getByPhilosofer(philosofer: string): Promise<ToT> {
+    if (!philosofer?.trim()) {
+      throw new Error("Philosofer name is required");
+    }
+
+    const tot = await this.repo.getByPhilosofer(philosofer);
     if (!tot) {
       throw new Error("ToT not found");
     }
@@ -134,6 +159,18 @@ export class TotService {
     }
     if (totData.years?.trim()) {
       updateData.years = totData.years;
+    }
+    if (totData.meta_title?.trim()) {
+      updateData.meta_title = totData.meta_title;
+    }
+    if (totData.meta_description?.trim()) {
+      updateData.meta_description = totData.meta_description;
+    }
+    if (totData.keywords?.trim()) {
+      updateData.keywords = totData.keywords;
+    }
+    if (totData.is_published !== undefined) {
+      updateData.is_published = totData.is_published;
     }
 
     // Upload new image if provided

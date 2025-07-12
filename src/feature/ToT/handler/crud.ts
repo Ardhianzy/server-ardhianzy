@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import { TotService } from "../service/crud";
+
 // Extend Request untuk menambahkan admin dari JWT
 declare global {
   namespace Express {
@@ -35,6 +36,11 @@ export class TotHandler {
         geoorigin: req.body.geoorigin,
         detail_location: req.body.detail_location,
         years: req.body.years,
+        meta_title: req.body.meta_title,
+        meta_description: req.body.meta_description,
+        keywords: req.body.keywords,
+        is_published:
+          req.body.is_published === "true" || req.body.is_published === true,
         image: req.file,
       });
 
@@ -117,6 +123,42 @@ export class TotHandler {
     }
   };
 
+  // Get ToT by Philosofer
+  getTotByPhilosofer = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { philosofer } = req.params;
+
+      if (!philosofer) {
+        res.status(400).json({
+          success: false,
+          message: "Philosofer parameter is required",
+        });
+        return;
+      }
+
+      const tot = await this.totService.getByPhilosofer(philosofer);
+
+      res.status(200).json({
+        success: true,
+        message: "ToT retrieved successfully",
+        data: tot,
+      });
+    } catch (error) {
+      if (error instanceof Error && error.message === "ToT not found") {
+        res.status(404).json({
+          success: false,
+          message: "ToT not found",
+        });
+        return;
+      }
+
+      res.status(500).json({
+        success: false,
+        message: error instanceof Error ? error.message : "Failed to fetch ToT",
+      });
+    }
+  };
+
   // Update ToT by ID
   updateToT = async (req: Request, res: Response): Promise<void> => {
     try {
@@ -130,13 +172,24 @@ export class TotHandler {
         return;
       }
 
-      const updatedToT = await this.totService.updateById(id, {
+      const updateData: any = {
         philosofer: req.body.philosofer,
         geoorigin: req.body.geoorigin,
         detail_location: req.body.detail_location,
         years: req.body.years,
+        meta_title: req.body.meta_title,
+        meta_description: req.body.meta_description,
+        keywords: req.body.keywords,
         image: req.file,
-      });
+      };
+
+      // Handle boolean field if provided
+      if (req.body.is_published !== undefined) {
+        updateData.is_published =
+          req.body.is_published === "true" || req.body.is_published === true;
+      }
+
+      const updatedToT = await this.totService.updateById(id, updateData);
 
       res.status(200).json({
         success: true,

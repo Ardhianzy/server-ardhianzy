@@ -10,6 +10,7 @@ import glosarium from "../src/routes/glosarium";
 import research from "../src/routes/research";
 import collected from "../src/routes/collected";
 import articel from "../src/routes/articel";
+import totMeta from "../src/routes/tot-meta";
 const app: Application = express();
 
 app.use(cors());
@@ -22,6 +23,7 @@ app.use("/api/glosarium", glosarium);
 app.use("/api/research", research);
 app.use("/api/collected", collected);
 app.use("/api/articel", articel);
+app.use("/api/tot-meta", totMeta);
 
 app.use((err: any, req: any, res: any, next: any) => {
   console.error(err);
