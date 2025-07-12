@@ -1,6 +1,6 @@
 // middleware/authenticate.ts
 import { Request, Response, NextFunction } from "express";
-import jwt from "jsonwebtoken";
+import * as jwt from "jsonwebtoken";
 
 export const authenticate = async (
   req: Request,
