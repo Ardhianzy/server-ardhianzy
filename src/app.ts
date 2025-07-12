@@ -1,6 +1,5 @@
 // src/app.ts
-import express, { Application } from "express";
-import bodyParser from "body-parser";
+import express, { Application, Request, Response, NextFunction } from "express";
 import cors from "cors";
 import prisma from "./config/db";
 import authRoutes from "./routes/auth_routes";
@@ -11,11 +10,15 @@ import research from "./routes/research";
 import collected from "./routes/collected";
 import articel from "./routes/articel";
 import totMeta from "./routes/tot-meta";
+
 const app: Application = express();
 
+// Middleware
 app.use(cors());
-app.use(bodyParser.json());
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+// Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/ToT", totRoutes);
 app.use("/api/shop", shopRoutes);
@@ -25,11 +28,14 @@ app.use("/api/collected", collected);
 app.use("/api/articel", articel);
 app.use("/api/tot-meta", totMeta);
 
-app.use((err: any, req: any, res: any, next: any) => {
+// Error handling middleware
+app.use((err: any, req: Request, res: Response, next: NextFunction) => {
   console.error(err);
   res.status(500).json({ message: "Internal Server Error" });
 });
-app.get("/test-db", async (_req, res) => {
+
+// Test database connection
+app.get("/test-db", async (_req: Request, res: Response) => {
   try {
     const result = await prisma.$queryRaw`SELECT 1`;
     res.json({ success: true, result });
@@ -42,7 +48,8 @@ app.get("/test-db", async (_req, res) => {
   }
 });
 
-app.get("/", (_req, res) => {
+// Root route
+app.get("/", (_req: Request, res: Response) => {
   res.send("LISTEN AND SERVE YOUR BROWSER");
 });
 
