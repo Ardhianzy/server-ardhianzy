@@ -3,7 +3,7 @@
 import express, { Application, Request, Response, NextFunction } from "express";
 import cors from "cors";
 import prisma from "./config/db";
-import mainRoutes from "./routes/routes"; // <-- ini tinggal import satu
+import mainRoutes from "./routes"; // <-- ini tinggal import satu
 
 const app: Application = express();
 
