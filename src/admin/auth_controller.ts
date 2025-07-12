@@ -1,6 +1,18 @@
 import { Request, Response } from "express";
 import { AdminAuthService } from "./auth_service";
-import "../../../types/express";
+
+// Extend Request dengan declaration merging untuk menghindari konflik
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        admin_Id: number;
+        username: string;
+      };
+    }
+  }
+}
+
 // Interface untuk request dengan file upload
 interface RequestWithFile extends Request {
   file?: Express.Multer.File; // Untuk single file upload

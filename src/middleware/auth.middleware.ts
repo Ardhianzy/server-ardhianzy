@@ -1,7 +1,6 @@
 // middleware/authenticate.ts
 import { Request, Response, NextFunction } from "express";
 import * as jwt from "jsonwebtoken";
-import "../types/express"; // Import types
 
 export const authenticate = async (
   req: Request,
@@ -33,7 +32,7 @@ export const authenticate = async (
       username: string;
     };
 
-    req.user = decoded;
+    req.user = decoded; // Sekarang sudah compatible
     req.admin = decoded;
     next();
   } catch (error) {

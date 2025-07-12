@@ -1,6 +1,20 @@
 import { Request, Response } from "express";
 import { TotService } from "../service/crud";
-import "../../../types/express";
+
+// Extend Request untuk menambahkan admin dari JWT
+declare global {
+  namespace Express {
+    interface Request {
+      admin?: {
+        admin_Id: number;
+        user?: any;
+        username: string;
+      };
+      file?: Express.Multer.File;
+    }
+  }
+}
+
 export class TotHandler {
   private totService: TotService;
 
