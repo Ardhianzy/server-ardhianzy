@@ -1,16 +1,18 @@
 import { Request, Response } from "express";
 import { ToTMetaService } from "../service/crud";
 
-// Extend Request untuk menambahkan admin dari JWT
+// Extend Request interface to include admin property
 declare global {
   namespace Express {
     interface Request {
-      admin?: {
+      user?: {
         admin_Id: number;
-        user?: any;
         username: string;
       };
-      file?: Express.Multer.File;
+      admin?: {
+        admin_Id: number;
+        username: string;
+      };
     }
   }
 }

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { ToTMetaHandler } from "../feature/ToT_meta/handler/crud";
-import { authenticate } from "../middleware/auth.middleware";
+import { authenticate } from "../middleware/auth.middleware"; // Update path ini
 
 const router = Router();
 const totMetaHandler = new ToTMetaHandler();

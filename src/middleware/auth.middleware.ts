@@ -2,6 +2,22 @@
 import { Request, Response, NextFunction } from "express";
 import * as jwt from "jsonwebtoken";
 
+// Extend Express Request type
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        admin_Id: number;
+        username: string;
+      };
+      admin?: {
+        admin_Id: number;
+        username: string;
+      };
+    }
+  }
+}
+
 export const authenticate = async (
   req: Request,
   res: Response,
@@ -32,7 +48,7 @@ export const authenticate = async (
       username: string;
     };
 
-    req.user = decoded; // Sekarang sudah compatible
+    req.user = decoded;
     req.admin = decoded;
     next();
   } catch (error) {
