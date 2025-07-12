@@ -1,20 +1,6 @@
 import { Request, Response } from "express";
 import { CollectedMeditationsService } from "../service/crud_service";
-
-// Extend Request untuk menambahkan admin dari JWT
-declare global {
-  namespace Express {
-    interface Request {
-      admin?: {
-        admin_Id: number;
-        user?: any;
-        username: string;
-      };
-      file?: Express.Multer.File;
-    }
-  }
-}
-
+import "../../../types/express";
 export class CollectedMeditationsHandler {
   private collectedMeditationsService: CollectedMeditationsService;
 

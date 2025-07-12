@@ -1,22 +1,6 @@
 import { Request, Response } from "express";
 import { ToTMetaService } from "../service/crud";
-
-// Extend Request interface to include admin property
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        admin_Id: number;
-        username: string;
-      };
-      admin?: {
-        admin_Id: number;
-        username: string;
-      };
-    }
-  }
-}
-
+import "../../../types/express";
 export class ToTMetaHandler {
   private totMetaService: ToTMetaService;
 

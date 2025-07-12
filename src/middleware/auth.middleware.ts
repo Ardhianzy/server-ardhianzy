@@ -1,22 +1,7 @@
 // middleware/authenticate.ts
 import { Request, Response, NextFunction } from "express";
 import * as jwt from "jsonwebtoken";
-
-// Extend Express Request type
-declare global {
-  namespace Express {
-    interface Request {
-      user?: {
-        admin_Id: number;
-        username: string;
-      };
-      admin?: {
-        admin_Id: number;
-        username: string;
-      };
-    }
-  }
-}
+import "../types/express"; // Import types
 
 export const authenticate = async (
   req: Request,
