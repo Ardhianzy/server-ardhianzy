@@ -9,7 +9,7 @@ import glosarium from "./routes/glosarium";
 import research from "./routes/research";
 import collected from "./routes/collected";
 import articel from "./routes/articel";
-import totMeta from "./routes/tot-meta";
+import totMeta from "./routes/tot_meta";
 
 const app: Application = express();
 

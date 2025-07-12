@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { AdminAuthRepo } from "./auth.repo";
+import { AdminAuthRepo } from "./auth_repo";
 import { Admin } from "@prisma/client";
 import imagekit from "../libs/imageKit";
 import jwt from "jsonwebtoken";

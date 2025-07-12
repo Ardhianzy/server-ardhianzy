@@ -1,14 +1,14 @@
 import express from "express";
 import upload from "../middleware/multer";
-import { authenticate } from "../middleware/auth.middleware";
+import { authenticate } from "../middleware/auth_middleware";
 import { AuthController } from "../admin/auth_controller";
-import { rateLimitLogin } from "../middleware/validation.middleware";
+import { rateLimitLogin } from "../middleware/validation_middleware";
 import {
   validateAdminRegistration,
   validateAdminLogin,
   validateAdminUpdate,
   validatePasswordChange,
-} from "../middleware/validation.middleware";
+} from "../middleware/validation_middleware";
 
 const router = express.Router();
 const authController = new AuthController();

@@ -1,6 +1,6 @@
 import { Router } from "express";
 import { ShopHandler } from "../feature/shop/handler/crud_shop";
-import { authenticate } from "../middleware/auth.middleware";
+import { authenticate } from "../middleware/auth_middleware";
 import upload from "../middleware/multer";
 
 const router = Router();
