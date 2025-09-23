@@ -2,6 +2,16 @@ import { Request, Response } from "express";
 import { ShopService } from "../service/crud_shop";
 import { validationResult } from "express-validator";
 
+// Augment Request untuk payload JWT & file (jika belum ada di global.d.ts)
+declare global {
+  namespace Express {
+    interface Request {
+      user?: { admin_Id: string; username: string };
+      file?: Express.Multer.File;
+    }
+  }
+}
+
 export class ShopHandler {
   private service: ShopService;
 
@@ -11,8 +21,6 @@ export class ShopHandler {
 
   /**
    * Create a new Shop (Admin only)
-   * @param req - Express Request
-   * @param res - Express Response
    */
   async create(req: Request, res: Response): Promise<void> {
     try {
@@ -27,8 +35,17 @@ export class ShopHandler {
         return;
       }
 
+      const adminId = req.user?.admin_Id;
+      if (!adminId?.trim()) {
+        res
+          .status(401)
+          .json({ success: false, message: "Authentication required" });
+        return;
+      }
+
       const shopData = {
         ...req.body,
+        admin_id: adminId, // ← cuid string
         image: req.file,
       };
 
@@ -50,14 +67,12 @@ export class ShopHandler {
 
   /**
    * Get Shop by title
-   * @param req - Express Request
-   * @param res - Express Response
    */
   async getByTitle(req: Request, res: Response): Promise<void> {
     try {
       const { title } = req.params;
 
-      if (!title) {
+      if (!title?.trim()) {
         res.status(400).json({
           success: false,
           message: "Title parameter is required",
@@ -65,7 +80,7 @@ export class ShopHandler {
         return;
       }
 
-      const shop = await this.service.getByTitle(title);
+      const shop = await this.service.getByTitle(title.trim());
 
       if (!shop) {
         res.status(404).json({
@@ -91,24 +106,20 @@ export class ShopHandler {
 
   /**
    * Get all Shops with pagination
-   * @param req - Express Request
-   * @param res - Express Response
    */
   async getAll(req: Request, res: Response): Promise<void> {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
-      const sortBy = (req.query.sortBy as string) || "id";
+      const sortBy = (req.query.sortBy as string) || undefined; // biarkan service pilih default
       const sortOrder = (req.query.sortOrder as "asc" | "desc") || "desc";
 
-      const paginationParams = {
+      const result = await this.service.getAll({
         page,
         limit,
         sortBy,
         sortOrder,
-      };
-
-      const result = await this.service.getAll(paginationParams);
+      });
 
       res.status(200).json({
         success: true,
@@ -127,15 +138,12 @@ export class ShopHandler {
 
   /**
    * Delete Shop by ID (Admin only)
-   * @param req - Express Request
-   * @param res - Express Response
    */
   async deleteById(req: Request, res: Response): Promise<void> {
     try {
-      const { id } = req.params;
-      const shopId = parseInt(id);
+      const id = req.params.id; // cuid string
 
-      if (isNaN(shopId)) {
+      if (!id?.trim()) {
         res.status(400).json({
           success: false,
           message: "Invalid shop ID",
@@ -143,7 +151,7 @@ export class ShopHandler {
         return;
       }
 
-      const deletedShop = await this.service.deleteById(shopId);
+      const deletedShop = await this.service.deleteById(id);
 
       res.status(200).json({
         success: true,
@@ -169,8 +177,6 @@ export class ShopHandler {
 
   /**
    * Update Shop by ID (Admin only)
-   * @param req - Express Request
-   * @param res - Express Response
    */
   async updateById(req: Request, res: Response): Promise<void> {
     try {
@@ -185,10 +191,8 @@ export class ShopHandler {
         return;
       }
 
-      const { id } = req.params;
-      const shopId = parseInt(id);
-
-      if (isNaN(shopId)) {
+      const id = req.params.id; // cuid string
+      if (!id?.trim()) {
         res.status(400).json({
           success: false,
           message: "Invalid shop ID",
@@ -201,7 +205,7 @@ export class ShopHandler {
         image: req.file,
       };
 
-      const updatedShop = await this.service.updateById(shopId, updateData);
+      const updatedShop = await this.service.updateById(id, updateData);
 
       res.status(200).json({
         success: true,

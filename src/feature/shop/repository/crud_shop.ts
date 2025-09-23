@@ -1,15 +1,6 @@
 import prisma from "../../../config/db";
 import { Shop, Prisma } from "@prisma/client";
-import {
-  SlugGenerator,
-  SEOMetaGenerator,
-  UtilityFactory,
-  generateSlug,
-  generateUniqueSlug,
-  generateSEOMeta,
-  isValidSlug,
-  ModelType,
-} from "../../../utils/slugify";
+import { UtilityFactory } from "../../../utils/slugify";
 
 // Interface untuk pagination
 interface PaginationParams {
@@ -32,7 +23,7 @@ interface PaginatedResult<T> {
 }
 
 export interface CreateShopData {
-  admin_id: number;
+  admin_id: string; // ← cuid string
   stock: string;
   title: string;
   category: string;
@@ -54,10 +45,20 @@ export class ShopRepository {
   private slugGenerator = UtilityFactory.getSlugGenerator();
   private seoGenerator = UtilityFactory.getSEOGenerator();
 
+  // Batasi field sort agar aman untuk Prisma
+  private readonly sortableFields = new Set<keyof Shop | string>([
+    "id",
+    "title",
+    "category",
+    "price",
+    "is_available",
+    "slug",
+    "created_at",
+    "updated_at",
+  ]);
+
   /**
    * Create a new Shop record
-   * @param dataShop - Data untuk membuat Shop baru
-   * @returns Promise<Shop> - Record Shop yang baru dibuat
    */
   async create(dataShop: CreateShopData): Promise<Shop> {
     try {
@@ -75,9 +76,9 @@ export class ShopRepository {
         data: {
           ...dataShop,
           slug,
-          meta_title: dataShop.meta_title || seoMeta.metaTitle,
+          meta_title: dataShop.meta_title ?? seoMeta.metaTitle,
           meta_description:
-            dataShop.meta_description || seoMeta.metaDescription,
+            dataShop.meta_description ?? seoMeta.metaDescription,
         },
       });
       return newShop;
@@ -92,8 +93,6 @@ export class ShopRepository {
 
   /**
    * Get Shop by title
-   * @param title - Title dari Shop yang ingin diambil
-   * @returns Promise<Shop | null> - Record Shop atau null jika tidak ditemukan
    */
   async getByTitle(title: string): Promise<Shop | null> {
     try {
@@ -112,28 +111,29 @@ export class ShopRepository {
 
   /**
    * Get all Shop records with pagination
-   * @param paginationParams - Parameters untuk pagination
-   * @returns Promise<PaginatedResult<Shop>> - Data dengan informasi pagination
    */
   async getAll(
     paginationParams: PaginationParams = {}
   ): Promise<PaginatedResult<Shop>> {
     try {
-      // Default values untuk pagination
-      const page = Math.max(1, paginationParams.page || 1);
-      const limit = Math.min(100, Math.max(1, paginationParams.limit || 10)); // Max 100 records per page
+      const page = Math.max(1, paginationParams.page ?? 1);
+      const limit = Math.min(100, Math.max(1, paginationParams.limit ?? 10));
       const skip = (page - 1) * limit;
-      const sortBy = paginationParams.sortBy || "id";
-      const sortOrder = paginationParams.sortOrder || "desc";
 
-      // Execute queries secara parallel untuk performa yang lebih baik
+      const sortByRaw = paginationParams.sortBy ?? "created_at";
+      const sortBy = this.sortableFields.has(sortByRaw)
+        ? (sortByRaw as keyof Shop)
+        : ("created_at" as keyof Shop);
+
+      const sortOrder = paginationParams.sortOrder ?? "desc";
+
       const [data, total] = await Promise.all([
         prisma.shop.findMany({
           skip,
           take: limit,
           orderBy: {
             [sortBy]: sortOrder,
-          },
+          } as any, // aman karena sudah whitelist
         }),
         prisma.shop.count(),
       ]);
@@ -162,15 +162,13 @@ export class ShopRepository {
 
   /**
    * Delete Shop by ID
-   * @param id - ID dari Shop yang akan dihapus
-   * @returns Promise<Shop> - Record Shop yang telah dihapus
    */
-  async deleteById(id: number): Promise<Shop> {
+  async deleteById(id: string): Promise<Shop> {
+    // ← string cuid
     try {
       const deletedShop = await prisma.shop.delete({
         where: { id },
       });
-
       return deletedShop;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -191,27 +189,26 @@ export class ShopRepository {
 
   /**
    * Update Shop by ID
-   * @param id - ID dari Shop yang akan diupdate
-   * @param dataShop - Data yang akan diupdate
-   * @returns Promise<Shop> - Record Shop yang telah diupdate
    */
-  async updateById(id: number, dataShop: UpdateShopData): Promise<Shop> {
+  async updateById(id: string, dataShop: UpdateShopData): Promise<Shop> {
     try {
-      let updateData = { ...dataShop };
+      let updateData: UpdateShopData = { ...dataShop };
 
+      // Regenerate slug jika title diubah
       if (dataShop.title) {
         updateData.slug = await this.slugGenerator.generateUniqueSlug(
           dataShop.title,
           "shop",
-          id
+          id // exclude current record
         );
       }
 
+      // Regenerate SEO meta jika title/desc diubah
       if (dataShop.title || dataShop.desc) {
         const currentShop = await prisma.shop.findUnique({ where: { id } });
         if (currentShop) {
-          const title = dataShop.title || currentShop.title;
-          const desc = dataShop.desc || currentShop.desc;
+          const title = dataShop.title ?? currentShop.title;
+          const desc = dataShop.desc ?? currentShop.desc;
           const seoMeta = this.seoGenerator.generateSEOMeta(title, desc);
 
           if (!dataShop.meta_title) {
@@ -230,10 +227,11 @@ export class ShopRepository {
 
       return updatedShop;
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === "P2025") {
-          throw new Error("Shop not found");
-        }
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2025"
+      ) {
+        throw new Error("Shop not found");
       }
       throw new Error(
         `Failed to update Shop: ${

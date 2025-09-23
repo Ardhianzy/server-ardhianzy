@@ -1,7 +1,6 @@
 import { Shop } from "@prisma/client";
 import {
   ShopRepository,
-  CreateShopData as RepoCreateShopData,
   UpdateShopData as RepoUpdateShopData,
 } from "../repository/crud_shop";
 import imagekit from "../../../libs/imageKit";
@@ -27,7 +26,7 @@ interface PaginatedResult<T> {
   };
 }
 
-// Interface untuk Create Shop
+// Interface untuk Create Shop (admin_id string/cuid)
 interface CreateShopData {
   image?: Express.Multer.File;
   stock: string;
@@ -39,7 +38,7 @@ interface CreateShopData {
   meta_title?: string;
   meta_description?: string;
   is_available?: boolean;
-  admin_id: number;
+  admin_id: string; // ← string (cuid)
 }
 
 // Interface untuk Update Shop
@@ -65,11 +64,17 @@ export class ShopService {
 
   /**
    * Create a new Shop
-   * @param shopData - Data untuk membuat Shop baru
-   * @returns Promise<Shop> - Record Shop yang baru dibuat
    */
   async create(shopData: CreateShopData): Promise<Shop> {
     try {
+      if (!shopData.admin_id?.trim()) throw new Error("Admin ID is required");
+      if (!shopData.title?.trim()) throw new Error("Title is required");
+      if (!shopData.stock?.trim()) throw new Error("Stock is required");
+      if (!shopData.category?.trim()) throw new Error("Category is required");
+      if (!shopData.price?.trim()) throw new Error("Price is required");
+      if (!shopData.link?.trim()) throw new Error("Link is required");
+      if (!shopData.desc?.trim()) throw new Error("Description is required");
+
       let imageUrl: string | undefined;
 
       // Upload image jika ada
@@ -82,13 +87,13 @@ export class ShopService {
             folder: "Ardianzy/shop",
           });
           imageUrl = response.url;
-        } catch (error) {
+        } catch {
           throw new Error("Failed to upload image");
         }
       }
 
       return this.repo.create({
-        admin_id: shopData.admin_id,
+        admin_id: shopData.admin_id, // ← string
         stock: shopData.stock,
         title: shopData.title,
         category: shopData.category,
@@ -111,8 +116,6 @@ export class ShopService {
 
   /**
    * Get Shop by title
-   * @param title - Title dari Shop yang ingin diambil
-   * @returns Promise<Shop | null> - Record Shop atau null jika tidak ditemukan
    */
   async getByTitle(title: string): Promise<Shop | null> {
     try {
@@ -128,8 +131,6 @@ export class ShopService {
 
   /**
    * Get all Shop records with pagination
-   * @param paginationParams - Parameters untuk pagination
-   * @returns Promise<PaginatedResult<Shop>> - Data dengan informasi pagination
    */
   async getAll(
     paginationParams: PaginationParams = {}
@@ -146,13 +147,12 @@ export class ShopService {
   }
 
   /**
-   * Delete Shop by ID
-   * @param id - ID dari Shop yang akan dihapus
-   * @returns Promise<Shop> - Record Shop yang telah dihapus
+   * Delete Shop by ID (cuid string)
    */
-  async deleteById(id: number): Promise<Shop> {
+  async deleteById(id: string): Promise<Shop> {
     try {
-      return await this.repo.deleteById(id);
+      if (!id?.trim()) throw new Error("Valid Shop ID is required");
+      return await this.repo.deleteById(id); // ← string
     } catch (error) {
       throw new Error(
         `Failed to delete Shop: ${
@@ -163,15 +163,13 @@ export class ShopService {
   }
 
   /**
-   * Update Shop by ID
-   * @param id - ID dari Shop yang akan diupdate
-   * @param shopData - Data yang akan diupdate
-   * @returns Promise<Shop> - Record Shop yang telah diupdate
+   * Update Shop by ID (cuid string)
    */
-
-  async updateById(id: number, shopData: UpdateShopData): Promise<Shop> {
+  async updateById(id: string, shopData: UpdateShopData): Promise<Shop> {
     try {
-      let updateData: RepoUpdateShopData = {};
+      if (!id?.trim()) throw new Error("Valid Shop ID is required");
+
+      const updateData: RepoUpdateShopData = {};
 
       // Copy all properties except image
       if (shopData.stock !== undefined) updateData.stock = shopData.stock;
@@ -198,7 +196,7 @@ export class ShopService {
             folder: "Ardianzy/shop",
           });
           updateData.image = response.url;
-        } catch (error) {
+        } catch {
           throw new Error("Failed to upload image");
         }
       }

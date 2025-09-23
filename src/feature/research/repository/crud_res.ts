@@ -27,7 +27,7 @@ interface PaginatedResult<T> {
 }
 
 export interface CreateResearchData {
-  admin_id: number;
+  admin_id: string; // ← cuid string
   research_title: string;
   research_sum: string;
   image: string;
@@ -37,6 +37,7 @@ export interface CreateResearchData {
   meta_description?: string;
   keywords?: string;
   is_published?: boolean;
+  // jika schema kamu punya field lain (mis. "fiel"), tambahkan di sini juga
 }
 
 export interface UpdateResearchData {
@@ -50,26 +51,35 @@ export interface UpdateResearchData {
   meta_description?: string;
   keywords?: string;
   is_published?: boolean;
+  // tambahkan field ekstra jika ada di schema
 }
 
 export class ResearchRepository {
-  private slugGenerator = UtilityFactory.getSlugGenerator();
-  private seoGenerator = UtilityFactory.getSEOGenerator();
+  private slugGenerator: SlugGenerator = UtilityFactory.getSlugGenerator();
+  private seoGenerator: SEOMetaGenerator = UtilityFactory.getSEOGenerator();
+
+  // batasi kolom yang boleh dipakai untuk sorting supaya aman
+  private readonly sortableFields = new Set<keyof Research | string>([
+    "id",
+    "research_title",
+    "researcher",
+    "research_date",
+    "slug",
+    "is_published",
+    "created_at",
+    "updated_at",
+  ]);
 
   /**
    * Create a new Research record (Admin only)
-   * @param dataResearch - Data untuk membuat Research baru
-   * @returns Promise<Research> - Record Research yang baru dibuat
    */
   async createByAdmin(dataResearch: CreateResearchData): Promise<Research> {
     try {
-      // Generate unique slug from research_title
       const slug = await this.slugGenerator.generateUniqueSlug(
         dataResearch.research_title,
         "research"
       );
 
-      // Generate SEO meta if not provided
       const seoMeta = this.seoGenerator.generateSEOMeta(
         dataResearch.research_title,
         dataResearch.research_sum
@@ -79,9 +89,9 @@ export class ResearchRepository {
         data: {
           ...dataResearch,
           slug,
-          meta_title: dataResearch.meta_title || seoMeta.metaTitle,
+          meta_title: dataResearch.meta_title ?? seoMeta.metaTitle,
           meta_description:
-            dataResearch.meta_description || seoMeta.metaDescription,
+            dataResearch.meta_description ?? seoMeta.metaDescription,
         },
       });
       return newResearch;
@@ -96,36 +106,33 @@ export class ResearchRepository {
 
   /**
    * Update Research by ID (Admin only)
-   * @param id - ID dari Research yang akan diupdate
-   * @param dataResearch - Data yang akan diupdate
-   * @returns Promise<Research> - Record Research yang telah diupdate
    */
   async updateById(
-    id: number,
+    id: string,
     dataResearch: UpdateResearchData
   ): Promise<Research> {
     try {
-      let updateData = { ...dataResearch };
+      let updateData: UpdateResearchData = { ...dataResearch };
 
-      // Generate new slug if research_title is being updated
+      // regenerate slug bila title berubah
       if (dataResearch.research_title) {
         updateData.slug = await this.slugGenerator.generateUniqueSlug(
           dataResearch.research_title,
           "research",
-          id
+          id // ← exclude current record (string cuid)
         );
       }
 
-      // Generate new SEO meta if research_title or research_sum is being updated
+      // regenerate SEO meta bila title/summary berubah
       if (dataResearch.research_title || dataResearch.research_sum) {
         const currentResearch = await prisma.research.findUnique({
           where: { id },
         });
         if (currentResearch) {
           const title =
-            dataResearch.research_title || currentResearch.research_title;
+            dataResearch.research_title ?? currentResearch.research_title;
           const summary =
-            dataResearch.research_sum || currentResearch.research_sum;
+            dataResearch.research_sum ?? currentResearch.research_sum;
           const seoMeta = this.seoGenerator.generateSEOMeta(title, summary);
 
           if (!dataResearch.meta_title) {
@@ -144,10 +151,11 @@ export class ResearchRepository {
 
       return updatedResearch;
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === "P2025") {
-          throw new Error("Research not found");
-        }
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === "P2025"
+      ) {
+        throw new Error("Research not found");
       }
       throw new Error(
         `Failed to update Research: ${
@@ -159,15 +167,12 @@ export class ResearchRepository {
 
   /**
    * Delete Research by ID (Admin only)
-   * @param id - ID dari Research yang akan dihapus
-   * @returns Promise<Research> - Record Research yang telah dihapus
    */
-  async deleteById(id: number): Promise<Research> {
+  async deleteById(id: string): Promise<Research> {
     try {
       const deletedResearch = await prisma.research.delete({
         where: { id },
       });
-
       return deletedResearch;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -188,28 +193,29 @@ export class ResearchRepository {
 
   /**
    * Get all Research records with pagination
-   * @param paginationParams - Parameters untuk pagination
-   * @returns Promise<PaginatedResult<Research>> - Data dengan informasi pagination
    */
   async getAll(
     paginationParams: PaginationParams = {}
   ): Promise<PaginatedResult<Research>> {
     try {
-      // Default values untuk pagination
-      const page = Math.max(1, paginationParams.page || 1);
-      const limit = Math.min(100, Math.max(1, paginationParams.limit || 10)); // Max 100 records per page
+      const page = Math.max(1, paginationParams.page ?? 1);
+      const limit = Math.min(100, Math.max(1, paginationParams.limit ?? 10));
       const skip = (page - 1) * limit;
-      const sortBy = paginationParams.sortBy || "id";
-      const sortOrder = paginationParams.sortOrder || "desc";
 
-      // Execute queries secara parallel untuk performa yang lebih baik
+      const sortByRaw = paginationParams.sortBy ?? "created_at";
+      const sortBy = this.sortableFields.has(sortByRaw)
+        ? (sortByRaw as keyof Research)
+        : ("created_at" as keyof Research);
+
+      const sortOrder = paginationParams.sortOrder ?? "desc";
+
       const [data, total] = await Promise.all([
         prisma.research.findMany({
           skip,
           take: limit,
           orderBy: {
             [sortBy]: sortOrder,
-          },
+          } as any,
         }),
         prisma.research.count(),
       ]);
@@ -238,8 +244,6 @@ export class ResearchRepository {
 
   /**
    * Get Research by research title
-   * @param researchTitle - Research title dari Research yang ingin diambil
-   * @returns Promise<Research | null> - Record Research atau null jika tidak ditemukan
    */
   async getByResearchTitle(researchTitle: string): Promise<Research | null> {
     try {

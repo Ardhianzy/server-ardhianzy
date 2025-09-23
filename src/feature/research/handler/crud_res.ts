@@ -1,19 +1,18 @@
 import { Request, Response } from "express";
 import { ResearchService } from "../service/crud_res";
 
-// // Extend Request untuk menambahkan admin dari JWT
-// declare global {
-//   namespace Express {
-//     interface Request {
-//       admin?: {
-//         admin_Id: number;
-//         user?: any;
-//         username: string;
-//       };
-//       file?: Express.Multer.File;
-//     }
-//   }
-// }
+// Extend Request untuk payload JWT (string cuid) + file upload
+declare global {
+  namespace Express {
+    interface Request {
+      user?: {
+        admin_Id: string;
+        username: string;
+      };
+      file?: Express.Multer.File;
+    }
+  }
+}
 
 export class ResearchHandler {
   private researchService: ResearchService;
@@ -25,13 +24,16 @@ export class ResearchHandler {
   // Create Research (Admin only)
   createByAdmin = async (req: Request, res: Response): Promise<void> => {
     try {
-      // Debug log
-      console.log("Request body:", req.body);
-      console.log("Request file:", req.file);
-      console.log("Request admin:", req.admin);
+      const adminId = req.user?.admin_Id;
+      if (!adminId?.trim()) {
+        res
+          .status(401)
+          .json({ success: false, message: "Authentication required" });
+        return;
+      }
 
       const newResearch = await this.researchService.createByAdmin({
-        admin_id: req.admin?.admin_Id ?? 0,
+        admin_id: adminId, // cuid string
         research_title: req.body.research_title,
         research_sum: req.body.research_sum,
         researcher: req.body.researcher,
@@ -61,13 +63,10 @@ export class ResearchHandler {
   // Update Research by ID (Admin only)
   updateById = async (req: Request, res: Response): Promise<void> => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id; // cuid string
 
-      if (isNaN(id)) {
-        res.status(400).json({
-          success: false,
-          message: "Invalid ID format",
-        });
+      if (!id?.trim()) {
+        res.status(400).json({ success: false, message: "Invalid ID format" });
         return;
       }
 
@@ -81,12 +80,10 @@ export class ResearchHandler {
         image: req.file,
       };
 
-      // Handle research_date if provided
       if (req.body.research_date) {
         updateData.research_date = new Date(req.body.research_date);
       }
 
-      // Handle is_published if provided
       if (req.body.is_published !== undefined) {
         updateData.is_published =
           req.body.is_published === "true" || req.body.is_published === true;
@@ -104,13 +101,9 @@ export class ResearchHandler {
       });
     } catch (error) {
       if (error instanceof Error && error.message === "Research not found") {
-        res.status(404).json({
-          success: false,
-          message: "Research not found",
-        });
+        res.status(404).json({ success: false, message: "Research not found" });
         return;
       }
-
       res.status(500).json({
         success: false,
         message:
@@ -122,13 +115,10 @@ export class ResearchHandler {
   // Delete Research by ID (Admin only)
   deleteById = async (req: Request, res: Response): Promise<void> => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id; // cuid string
 
-      if (isNaN(id)) {
-        res.status(400).json({
-          success: false,
-          message: "Invalid ID format",
-        });
+      if (!id?.trim()) {
+        res.status(400).json({ success: false, message: "Invalid ID format" });
         return;
       }
 
@@ -142,10 +132,9 @@ export class ResearchHandler {
     } catch (error) {
       if (error instanceof Error) {
         if (error.message === "Research not found") {
-          res.status(404).json({
-            success: false,
-            message: "Research not found",
-          });
+          res
+            .status(404)
+            .json({ success: false, message: "Research not found" });
           return;
         }
         if (
@@ -158,7 +147,6 @@ export class ResearchHandler {
           return;
         }
       }
-
       res.status(500).json({
         success: false,
         message:
@@ -172,7 +160,7 @@ export class ResearchHandler {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
-      const sortBy = (req.query.sortBy as string) || "id";
+      const sortBy = (req.query.sortBy as string) || undefined; // biar service yang pilih default
       const sortOrder = (req.query.sortOrder as "asc" | "desc") || "desc";
 
       const result = await this.researchService.getAll({
@@ -203,7 +191,7 @@ export class ResearchHandler {
     try {
       const { researchTitle } = req.params;
 
-      if (!researchTitle) {
+      if (!researchTitle?.trim()) {
         res.status(400).json({
           success: false,
           message: "Research title parameter is required",
@@ -212,7 +200,7 @@ export class ResearchHandler {
       }
 
       const research = await this.researchService.getByResearchTitle(
-        researchTitle
+        researchTitle.trim()
       );
 
       res.status(200).json({
@@ -222,13 +210,9 @@ export class ResearchHandler {
       });
     } catch (error) {
       if (error instanceof Error && error.message === "Research not found") {
-        res.status(404).json({
-          success: false,
-          message: "Research not found",
-        });
+        res.status(404).json({ success: false, message: "Research not found" });
         return;
       }
-
       res.status(500).json({
         success: false,
         message:

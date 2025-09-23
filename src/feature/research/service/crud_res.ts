@@ -14,7 +14,7 @@ interface CreateResearchData {
   meta_description?: string;
   keywords?: string;
   is_published?: boolean;
-  admin_id: number;
+  admin_id: string; // ← cuid string
 }
 
 // Interface untuk Update Research
@@ -73,9 +73,9 @@ export class ResearchService {
     if (!researchData.research_date) {
       throw new Error("Research date is required");
     }
-    // if (!researchData.admin_id) {
-    //   throw new Error("Admin ID is required");
-    // }
+    if (!researchData.admin_id?.trim()) {
+      throw new Error("Admin ID is required");
+    }
 
     let imageUrl: string | undefined;
 
@@ -89,7 +89,7 @@ export class ResearchService {
           folder: "Ardianzy/research",
         });
         imageUrl = response.url;
-      } catch (error) {
+      } catch {
         throw new Error("Failed to upload image");
       }
     }
@@ -99,7 +99,7 @@ export class ResearchService {
     }
 
     return this.repo.createByAdmin({
-      admin_id: researchData.admin_id,
+      admin_id: researchData.admin_id, // ← string
       research_title: researchData.research_title,
       research_sum: researchData.research_sum,
       image: imageUrl,
@@ -114,43 +114,34 @@ export class ResearchService {
 
   // Update Research by ID (Admin only)
   async updateById(
-    id: number,
+    id: string,
     researchData: UpdateResearchData
   ): Promise<Research> {
-    // Check if Research exists
-    const existingResearch = await this.repo.getByResearchTitle("");
-    if (!existingResearch) {
-      // Verify existence by checking get all and finding by id
-      const allResearch = await this.repo.getAll({ page: 1, limit: 1 });
-      const found = allResearch.data.find((r) => r.id === id);
-      if (!found) {
-        throw new Error("Research not found");
-      }
-    }
+    if (!id?.trim()) throw new Error("Valid Research ID is required");
 
     const updateData: any = {};
 
     // Only update provided fields
     if (researchData.research_title?.trim()) {
-      updateData.research_title = researchData.research_title;
+      updateData.research_title = researchData.research_title.trim();
     }
     if (researchData.research_sum?.trim()) {
-      updateData.research_sum = researchData.research_sum;
+      updateData.research_sum = researchData.research_sum.trim();
     }
     if (researchData.researcher?.trim()) {
-      updateData.researcher = researchData.researcher;
+      updateData.researcher = researchData.researcher.trim();
     }
     if (researchData.research_date) {
       updateData.research_date = researchData.research_date;
     }
     if (researchData.meta_title?.trim()) {
-      updateData.meta_title = researchData.meta_title;
+      updateData.meta_title = researchData.meta_title.trim();
     }
     if (researchData.meta_description?.trim()) {
-      updateData.meta_description = researchData.meta_description;
+      updateData.meta_description = researchData.meta_description.trim();
     }
     if (researchData.keywords?.trim()) {
-      updateData.keywords = researchData.keywords;
+      updateData.keywords = researchData.keywords.trim();
     }
     if (researchData.is_published !== undefined) {
       updateData.is_published = researchData.is_published;
@@ -166,25 +157,19 @@ export class ResearchService {
           folder: "Ardianzy/research",
         });
         updateData.image = response.url;
-      } catch (error) {
+      } catch {
         throw new Error("Failed to upload image");
       }
     }
 
+    // Andalkan repo untuk melempar "Research not found" (P2025) bila ID tidak ada
     return this.repo.updateById(id, updateData);
   }
 
   // Delete Research by ID (Admin only)
-  async deleteById(id: number): Promise<Research> {
-    // Check if Research exists by trying to get one with similar approach
-    try {
-      return await this.repo.deleteById(id);
-    } catch (error) {
-      if (error instanceof Error && error.message === "Research not found") {
-        throw new Error("Research not found");
-      }
-      throw error;
-    }
+  async deleteById(id: string): Promise<Research> {
+    if (!id?.trim()) throw new Error("Valid Research ID is required");
+    return this.repo.deleteById(id);
   }
 
   // Get all Research dengan pagination
@@ -196,7 +181,10 @@ export class ResearchService {
 
   // Get Research by research title
   async getByResearchTitle(researchTitle: string): Promise<Research> {
-    const research = await this.repo.getByResearchTitle(researchTitle);
+    if (!researchTitle?.trim()) {
+      throw new Error("Research title is required");
+    }
+    const research = await this.repo.getByResearchTitle(researchTitle.trim());
     if (!research) {
       throw new Error("Research not found");
     }

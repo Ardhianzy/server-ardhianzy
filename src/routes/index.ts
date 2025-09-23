@@ -13,7 +13,7 @@ const router = Router();
 
 router.use("/auth", authRoutes);
 router.use("/ToT", totRoutes);
-// router.use("/shop", shopRoutes);
+router.use("/shop", shopRoutes);
 // router.use("/glosarium", glosariumRoutes);
 // router.use("/research", researchRoutes);
 // router.use("/collected", collectedRoutes);
