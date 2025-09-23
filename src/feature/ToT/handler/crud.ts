@@ -1,13 +1,12 @@
 import { Request, Response } from "express";
 import { TotService } from "../service/crud";
 
-// Extend Request untuk menambahkan admin dari JWT
+// Extend Request untuk menambahkan user dari JWT (string cuid)
 declare global {
   namespace Express {
     interface Request {
-      admin?: {
-        admin_Id: number;
-        user?: any;
+      user?: {
+        admin_Id: string;
         username: string;
       };
       file?: Express.Multer.File;
@@ -22,16 +21,18 @@ export class TotHandler {
     this.totService = new TotService();
   }
 
-  // Create ToT
   createToT = async (req: Request, res: Response): Promise<void> => {
     try {
-      // Debug log
-      console.log("Request body:", req.body);
-      console.log("Request file:", req.file);
-      console.log("Request admin:", req.admin);
+      const adminId = req.user?.admin_Id;
+      if (!adminId?.trim()) {
+        res
+          .status(401)
+          .json({ success: false, message: "Authentication required" });
+        return;
+      }
 
       const newToT = await this.totService.create({
-        admin_id: req.admin?.admin_Id ?? 0,
+        admin_id: adminId, // cuid string
         philosofer: req.body.philosofer,
         geoorigin: req.body.geoorigin,
         detail_location: req.body.detail_location,
@@ -63,7 +64,7 @@ export class TotHandler {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
-      const sortBy = (req.query.sortBy as string) || "id";
+      const sortBy = (req.query.sortBy as string) || undefined; // biar service yang set default
       const sortOrder = (req.query.sortOrder as "asc" | "desc") || "desc";
 
       const result = await this.totService.getAll({
@@ -87,18 +88,18 @@ export class TotHandler {
     }
   };
 
-  // Get ToT by ID
+  // Get ToT by ID (cuid string)
   getTotById = async (req: Request, res: Response): Promise<void> => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id; // string
 
-      if (isNaN(id)) {
-        res.status(400).json({
-          success: false,
-          message: "Invalid ID format",
-        });
+      if (!id?.trim()) {
+        res.status(400).json({ success: false, message: "Invalid ID format" });
         return;
       }
+      // (Opsional) validasi pola CUID:
+      // const cuidRegex = /^c[^\s-]{8,}$/i;
+      // if (!cuidRegex.test(id)) { ... }
 
       const tot = await this.totService.getById(id);
 
@@ -109,10 +110,7 @@ export class TotHandler {
       });
     } catch (error) {
       if (error instanceof Error && error.message === "ToT not found") {
-        res.status(404).json({
-          success: false,
-          message: "ToT not found",
-        });
+        res.status(404).json({ success: false, message: "ToT not found" });
         return;
       }
 
@@ -128,7 +126,7 @@ export class TotHandler {
     try {
       const { philosofer } = req.params;
 
-      if (!philosofer) {
+      if (!philosofer?.trim()) {
         res.status(400).json({
           success: false,
           message: "Philosofer parameter is required",
@@ -145,10 +143,7 @@ export class TotHandler {
       });
     } catch (error) {
       if (error instanceof Error && error.message === "ToT not found") {
-        res.status(404).json({
-          success: false,
-          message: "ToT not found",
-        });
+        res.status(404).json({ success: false, message: "ToT not found" });
         return;
       }
 
@@ -159,16 +154,13 @@ export class TotHandler {
     }
   };
 
-  // Update ToT by ID
+  // Update ToT by ID (cuid string)
   updateToT = async (req: Request, res: Response): Promise<void> => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
 
-      if (isNaN(id)) {
-        res.status(400).json({
-          success: false,
-          message: "Invalid ID format",
-        });
+      if (!id?.trim()) {
+        res.status(400).json({ success: false, message: "Invalid ID format" });
         return;
       }
 
@@ -183,7 +175,6 @@ export class TotHandler {
         image: req.file,
       };
 
-      // Handle boolean field if provided
       if (req.body.is_published !== undefined) {
         updateData.is_published =
           req.body.is_published === "true" || req.body.is_published === true;
@@ -198,10 +189,7 @@ export class TotHandler {
       });
     } catch (error) {
       if (error instanceof Error && error.message === "ToT not found") {
-        res.status(404).json({
-          success: false,
-          message: "ToT not found",
-        });
+        res.status(404).json({ success: false, message: "ToT not found" });
         return;
       }
 
@@ -213,16 +201,13 @@ export class TotHandler {
     }
   };
 
-  // Delete ToT by ID
+  // Delete ToT by ID (cuid string)
   deleteToT = async (req: Request, res: Response): Promise<void> => {
     try {
-      const id = parseInt(req.params.id);
+      const id = req.params.id;
 
-      if (isNaN(id)) {
-        res.status(400).json({
-          success: false,
-          message: "Invalid ID format",
-        });
+      if (!id?.trim()) {
+        res.status(400).json({ success: false, message: "Invalid ID format" });
         return;
       }
 
@@ -236,10 +221,7 @@ export class TotHandler {
     } catch (error) {
       if (error instanceof Error) {
         if (error.message === "ToT not found") {
-          res.status(404).json({
-            success: false,
-            message: "ToT not found",
-          });
+          res.status(404).json({ success: false, message: "ToT not found" });
           return;
         }
         if (error.message === "Cannot delete ToT: it has related records") {

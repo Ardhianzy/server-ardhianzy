@@ -1,6 +1,6 @@
 -- CreateTable
 CREATE TABLE "Admin" (
-    "id" SERIAL NOT NULL,
+    "id" TEXT NOT NULL,
     "image" TEXT NOT NULL,
     "first_name" TEXT NOT NULL,
     "last_name" TEXT NOT NULL,
@@ -14,8 +14,8 @@ CREATE TABLE "Admin" (
 
 -- CreateTable
 CREATE TABLE "tot" (
-    "id" SERIAL NOT NULL,
-    "admin_id" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
+    "admin_id" TEXT NOT NULL,
     "image" TEXT,
     "philosofer" TEXT NOT NULL,
     "geoorigin" TEXT NOT NULL,
@@ -34,8 +34,8 @@ CREATE TABLE "tot" (
 
 -- CreateTable
 CREATE TABLE "tot_meta" (
-    "id" SERIAL NOT NULL,
-    "ToT_id" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
+    "ToT_id" TEXT NOT NULL,
     "metafisika" TEXT NOT NULL,
     "epsimologi" TEXT NOT NULL,
     "aksiologi" TEXT NOT NULL,
@@ -46,8 +46,8 @@ CREATE TABLE "tot_meta" (
 
 -- CreateTable
 CREATE TABLE "reading_guidline" (
-    "id" SERIAL NOT NULL,
-    "ToT_id" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
+    "ToT_id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "author" TEXT NOT NULL,
     "publisher" TEXT NOT NULL,
@@ -59,8 +59,8 @@ CREATE TABLE "reading_guidline" (
 
 -- CreateTable
 CREATE TABLE "collected_meditations" (
-    "id" SERIAL NOT NULL,
-    "admin_id" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
+    "admin_id" TEXT NOT NULL,
     "image" TEXT,
     "dialog" TEXT NOT NULL,
     "judul" TEXT NOT NULL,
@@ -76,14 +76,15 @@ CREATE TABLE "collected_meditations" (
 
 -- CreateTable
 CREATE TABLE "researches" (
-    "id" SERIAL NOT NULL,
-    "admin_id" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
+    "admin_id" TEXT NOT NULL,
     "research_title" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "research_sum" TEXT NOT NULL,
     "image" TEXT NOT NULL,
     "researcher" TEXT NOT NULL,
     "research_date" TIMESTAMP(3) NOT NULL,
+    "fiel" TEXT NOT NULL,
     "meta_title" TEXT,
     "meta_description" TEXT,
     "keywords" TEXT,
@@ -96,8 +97,8 @@ CREATE TABLE "researches" (
 
 -- CreateTable
 CREATE TABLE "articles" (
-    "id" SERIAL NOT NULL,
-    "admin_id" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
+    "admin_id" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "slug" TEXT NOT NULL,
     "image" TEXT NOT NULL,
@@ -120,8 +121,8 @@ CREATE TABLE "articles" (
 
 -- CreateTable
 CREATE TABLE "shops" (
-    "id" SERIAL NOT NULL,
-    "admin_id" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
+    "admin_id" TEXT NOT NULL,
     "stock" TEXT NOT NULL,
     "title" TEXT NOT NULL,
     "category" TEXT NOT NULL,
@@ -141,8 +142,8 @@ CREATE TABLE "shops" (
 
 -- CreateTable
 CREATE TABLE "glosarium" (
-    "id" SERIAL NOT NULL,
-    "admin_id" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
+    "admin_id" TEXT NOT NULL,
     "term" TEXT NOT NULL,
     "definition" TEXT NOT NULL,
     "slug" TEXT NOT NULL,

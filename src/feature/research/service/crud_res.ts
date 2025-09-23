@@ -73,9 +73,9 @@ export class ResearchService {
     if (!researchData.research_date) {
       throw new Error("Research date is required");
     }
-    if (!researchData.admin_id) {
-      throw new Error("Admin ID is required");
-    }
+    // if (!researchData.admin_id) {
+    //   throw new Error("Admin ID is required");
+    // }
 
     let imageUrl: string | undefined;
 

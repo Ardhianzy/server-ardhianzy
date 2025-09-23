@@ -66,7 +66,7 @@ class DatabaseSlugChecker {
   async checkSlugExists(
     slug: string,
     model: ModelType,
-    excludeId?: number
+    excludeId?: string // <--- PERUBAHAN 1
   ): Promise<boolean> {
     const where: any = { slug };
 
@@ -107,7 +107,7 @@ export class SlugGenerator extends BaseSlugManager {
   public async generateUniqueSlug(
     baseText: string,
     model: ModelType,
-    excludeId?: number
+    excludeId?: string // <--- PERUBAHAN 2
   ): Promise<string> {
     const baseSlug = this.generateBasicSlug(baseText);
     let slug = baseSlug;
@@ -124,7 +124,7 @@ export class SlugGenerator extends BaseSlugManager {
   public async generateValidatedUniqueSlug(
     baseText: string,
     model: ModelType,
-    excludeId?: number
+    excludeId?: string // <--- PERUBAHAN 3
   ): Promise<{ slug: string; validation: SlugValidationResult }> {
     const slug = await this.generateUniqueSlug(baseText, model, excludeId);
     const validation = this.validateSlug(slug);
@@ -224,7 +224,7 @@ export const generateSlug = (text: string): string => {
 export const generateUniqueSlug = async (
   baseText: string,
   model: ModelType,
-  excludeId?: number
+  excludeId?: string // <--- PERUBAHAN 4
 ): Promise<string> => {
   return UtilityFactory.getSlugGenerator().generateUniqueSlug(
     baseText,

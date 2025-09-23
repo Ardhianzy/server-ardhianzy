@@ -8,194 +8,195 @@ datasource db {
 }
 
 model Admin {
-  id          Int      @id @default(autoincrement())
-  image       String
-  first_name  String
-  last_name   String
-  username    String   @unique
-  password    String
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  
+  id         String   @id @default(cuid())
+  image      String
+  first_name String
+  last_name  String
+  username   String   @unique
+  password   String
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
   // Relations
-  ToT ToT[] @relation(name: "AdminToT")
+  ToT                   ToT[]                   @relation(name: "AdminToT")
   Collected_meditations Collected_meditations[] @relation(name: "Admin_coc")
-  Research Research[] @relation(name: "Admin_research")
-  Article Article[] @relation(name: "admin_article")
-  Shop Shop[] @relation(name: "Admin_shop")
-  Glosarium Glosarium[] @relation(name: "Admin_glosarium")
+  Research              Research[]              @relation(name: "Admin_research")
+  Article               Article[]               @relation(name: "admin_article")
+  Shop                  Shop[]                  @relation(name: "Admin_shop")
+  Glosarium             Glosarium[]             @relation(name: "Admin_glosarium")
 }
 
 model ToT {
-  id              Int      @id @default(autoincrement())
-  admin_id        Int
+  id              String  @id @default(cuid())
+  admin_id        String
   image           String?
   philosofer      String
   geoorigin       String
   detail_location String
   years           String
-  
-  slug             String   @unique
+
+  slug             String  @unique
   meta_title       String?
   meta_description String?
   keywords         String?
 
-  is_published     Boolean  @default(false)
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-  
+  is_published Boolean  @default(false)
+  created_at   DateTime @default(now())
+  updated_at   DateTime @updatedAt
+
   // Relations
-  admin Admin @relation(fields: [admin_id], references: [id], name: "AdminToT")
-  ToT_meta ToT_meta[] @relation(name: "ToT_meta")
+  admin            Admin              @relation(fields: [admin_id], references: [id], name: "AdminToT")
+  ToT_meta         ToT_meta[]         @relation(name: "ToT_meta")
   Reading_guidline Reading_guidline[] @relation(name: "ToT_guide")
+
   @@map("tot")
 }
 
 model ToT_meta {
-  id              Int      @id @default(autoincrement())
-  ToT_id          Int
-  metafisika      String
-  epsimologi      String
-  aksiologi       String
-  conclusion      String
-  
+  id         String @id @default(cuid())
+  ToT_id     String
+  metafisika String
+  epsimologi String
+  aksiologi  String
+  conclusion String
 
   tot ToT @relation(fields: [ToT_id], references: [id], name: "ToT_meta")
+
   @@map("tot_meta")
 }
 
 model Reading_guidline {
-  id              Int      @id @default(autoincrement())
-  ToT_id          Int
-  title           String
-  author          String
-  publisher       String
-  year            String
-  detailed        String
-  
+  id        String @id @default(cuid())
+  ToT_id    String
+  title     String
+  author    String
+  publisher String
+  year      String
+  detailed  String
+
   tot ToT @relation(fields: [ToT_id], references: [id], name: "ToT_guide")
+
   @@map("reading_guidline")
 }
 
 model Collected_meditations {
-  id          Int      @id @default(autoincrement())
-  admin_id    Int
-  image       String?
-  dialog      String
-  judul       String
+  id       String  @id @default(cuid())
+  admin_id String
+  image    String?
+  dialog   String
+  judul    String
 
-  slug             String?   @unique
+  slug             String? @unique
   meta_title       String?
   meta_description String?
-  is_published     Boolean   @default(false)
-  
-  created_at  DateTime @default(now())
-  updated_at  DateTime @updatedAt
-  
+  is_published     Boolean @default(false)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
   admin Admin @relation(fields: [admin_id], references: [id], name: "Admin_coc")
+
   @@map("collected_meditations")
 }
 
 model Research {
-  id             Int      @id @default(autoincrement())
-  admin_id       Int
+  id             String   @id @default(cuid())
+  admin_id       String
   research_title String
   slug           String   @unique
   research_sum   String
   image          String
   researcher     String
   research_date  DateTime
-  
-  // SEO Fields
+  fiel           String
+
   meta_title       String?
   meta_description String?
   keywords         String?
-  
-  // Timestamps
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
-  
-  // Status
+
   is_published Boolean @default(false)
-  
-  // Relation
+
   admin Admin @relation(fields: [admin_id], references: [id], name: "Admin_research")
-  
+
   @@map("researches")
 }
 
 model Article {
-  id       Int    @id @default(autoincrement())
-  admin_id Int
+  id       String   @id @default(cuid())
+  admin_id String
   title    String
-  slug     String @unique
+  slug     String   @unique
   image    String
   content  String
   author   String
   date     DateTime
-  
+
   meta_title       String?
   meta_description String?
   keywords         String?
   excerpt          String?
-  canonical_url      String?
-  
+  canonical_url    String?
+
   created_at DateTime @default(now())
   updated_at DateTime @updatedAt
-  
+
   is_published Boolean @default(false)
   is_featured  Boolean @default(false)
   view_count   Int     @default(0)
-  
+
   admin Admin @relation(fields: [admin_id], references: [id], name: "admin_article")
-  
+
   @@map("articles")
 }
 
 model Shop {
-  id              Int @id @default(autoincrement())
-  admin_id        Int
-  stock           String
-  title           String
-  category        String
-  price           String
-  link            String
-  desc            String
-  image           String
-  
-  slug             String?   @unique
+  id       String @id @default(cuid())
+  admin_id String
+  stock    String
+  title    String
+  category String
+  price    String
+  link     String
+  desc     String
+  image    String
+
+  slug             String? @unique
   meta_title       String?
   meta_description String?
-  is_available     Boolean   @default(true)
-  
-  created_at      DateTime @default(now())
-  updated_at      DateTime @updatedAt
-  
+  is_available     Boolean @default(true)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
   admin Admin @relation(fields: [admin_id], references: [id], name: "Admin_shop")
+
   @@map("shops")
 }
 
 model Glosarium {
-  id              Int @id @default(autoincrement())
-  admin_id        Int
-  term            String
-  definition      String
-  
-  slug             String   @unique
+  id         String @id @default(cuid())
+  admin_id   String
+  term       String
+  definition String
+
+  slug             String  @unique
   meta_title       String?
   meta_description String?
   keywords         String?
-  
-  etymology        String?  
-  examples         String?  
-  related_terms    String?    
 
-  is_published     Boolean  @default(false)
-  
-  created_at       DateTime @default(now())
-  updated_at       DateTime @updatedAt
-  
+  etymology     String?
+  examples      String?
+  related_terms String?
+
+  is_published Boolean @default(false)
+
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+
   admin Admin @relation(fields: [admin_id], references: [id], name: "Admin_glosarium")
-  
+
   @@map("glosarium")
 }

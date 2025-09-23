@@ -27,7 +27,7 @@ interface PaginatedResult<T> {
 }
 
 export interface CreateToTData {
-  admin_id: number;
+  admin_id: string; // ← string (cuid)
   image?: string;
   philosofer: string;
   geoorigin: string;
@@ -56,10 +56,21 @@ export class TotCrudRepo {
   private slugGenerator = UtilityFactory.getSlugGenerator();
   private seoGenerator = UtilityFactory.getSEOGenerator();
 
+  // Whitelist kolom yang boleh dijadikan sort key agar aman untuk Prisma
+  private readonly sortableFields = new Set<keyof ToT | string>([
+    "id",
+    "philosofer",
+    "geoorigin",
+    "detail_location",
+    "years",
+    "slug",
+    "is_published",
+    "created_at",
+    "updated_at",
+  ]);
+
   /**
    * Create a new ToT record
-   * @param dataToT - Data untuk membuat ToT baru
-   * @returns Promise<ToT> - Record ToT yang baru dibuat
    */
   async create(dataToT: CreateToTData): Promise<ToT> {
     try {
@@ -96,28 +107,30 @@ export class TotCrudRepo {
 
   /**
    * Get all ToT records with pagination
-   * @param paginationParams - Parameters untuk pagination
-   * @returns Promise<PaginatedResult<ToT>> - Data dengan informasi pagination
    */
   async getAll(
     paginationParams: PaginationParams = {}
   ): Promise<PaginatedResult<ToT>> {
     try {
-      // Default values untuk pagination
       const page = Math.max(1, paginationParams.page || 1);
-      const limit = Math.min(100, Math.max(1, paginationParams.limit || 10)); // Max 100 records per page
+      const limit = Math.min(100, Math.max(1, paginationParams.limit || 10));
       const skip = (page - 1) * limit;
-      const sortBy = paginationParams.sortBy || "id";
+
+      // Gunakan default sortBy yang aman
+      const sortByRaw = paginationParams.sortBy || "created_at";
+      const sortBy = this.sortableFields.has(sortByRaw)
+        ? (sortByRaw as keyof ToT)
+        : ("created_at" as keyof ToT);
+
       const sortOrder = paginationParams.sortOrder || "desc";
 
-      // Execute queries secara parallel untuk performa yang lebih baik
       const [data, total] = await Promise.all([
         prisma.toT.findMany({
           skip,
           take: limit,
           orderBy: {
             [sortBy]: sortOrder,
-          },
+          } as any, // cast aman karena kita whitelist
         }),
         prisma.toT.count(),
       ]);
@@ -146,10 +159,8 @@ export class TotCrudRepo {
 
   /**
    * Get ToT by ID
-   * @param id - ID dari ToT yang ingin diambil
-   * @returns Promise<ToT | null> - Record ToT atau null jika tidak ditemukan
    */
-  async getById(id: number): Promise<ToT | null> {
+  async getById(id: string): Promise<ToT | null> {
     try {
       const tot = await prisma.toT.findUnique({
         where: { id },
@@ -166,8 +177,6 @@ export class TotCrudRepo {
 
   /**
    * Get ToT by philosofer name
-   * @param philosofer - Philosofer name dari ToT yang ingin diambil
-   * @returns Promise<ToT | null> - Record ToT atau null jika tidak ditemukan
    */
   async getByPhilosofer(philosofer: string): Promise<ToT | null> {
     try {
@@ -186,15 +195,11 @@ export class TotCrudRepo {
 
   /**
    * Update ToT by ID
-   * @param id - ID dari ToT yang akan diupdate
-   * @param dataToT - Data yang akan diupdate
-   * @returns Promise<ToT> - Record ToT yang telah diupdate
    */
-  async updateById(id: number, dataToT: UpdateToTData): Promise<ToT> {
+  async updateById(id: string, dataToT: UpdateToTData): Promise<ToT> {
     try {
-      let updateData = { ...dataToT };
+      let updateData: UpdateToTData = { ...dataToT };
 
-      // Generate new slug if philosofer is being updated
       if (dataToT.philosofer) {
         updateData.slug = await this.slugGenerator.generateUniqueSlug(
           dataToT.philosofer,
@@ -203,7 +208,7 @@ export class TotCrudRepo {
         );
       }
 
-      // Generate new SEO meta if philosofer, geoorigin, or detail_location is being updated
+      // Generate new SEO meta if any key field is updated
       if (
         dataToT.philosofer ||
         dataToT.geoorigin ||
@@ -255,10 +260,8 @@ export class TotCrudRepo {
 
   /**
    * Delete ToT by ID
-   * @param id - ID dari ToT yang akan dihapus
-   * @returns Promise<ToT> - Record ToT yang telah dihapus
    */
-  async deleteById(id: number): Promise<ToT> {
+  async deleteById(id: string): Promise<ToT> {
     try {
       const deletedToT = await prisma.toT.delete({
         where: { id },

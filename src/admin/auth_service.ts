@@ -5,6 +5,8 @@ import imagekit from "../libs/imageKit";
 import jwt from "jsonwebtoken";
 import path from "path";
 
+type SafeAdmin = Omit<Admin, "password">;
+
 export class AdminAuthService {
   private repo: AdminAuthRepo;
 
@@ -20,30 +22,27 @@ export class AdminAuthService {
     username: string;
     password: string;
   }): Promise<Admin> {
-    // Validasi input
-    if (!adminData.username?.trim()) {
-      throw new Error("Username is required");
-    }
+    if (!adminData.username?.trim()) throw new Error("Username is required");
     if (!adminData.password || adminData.password.length < 8) {
       throw new Error("Password must be at least 8 characters");
     }
 
     let imageUrl: string | null = null;
 
-    // Upload image jika ada
     if (adminData.image) {
       try {
         const fileBase64 = adminData.image.buffer.toString("base64");
         const response = await imagekit.upload({
           fileName: Date.now() + path.extname(adminData.image.originalname),
-          file: fileBase64,
+          file: fileBase64, // SDK ImageKit Node: base64 string OK
           folder: "Ardianzy/admins",
         });
         imageUrl = response.url;
-      } catch (error) {
+      } catch {
         throw new Error("Failed to upload image");
       }
     }
+
     return this.repo.register({
       image: imageUrl,
       first_name: adminData.first_name,
@@ -57,50 +56,40 @@ export class AdminAuthService {
   async login(
     username: string,
     password: string
-  ): Promise<{ admin: Omit<Admin, "password">; token: string }> {
-    // Validasi input
+  ): Promise<{ admin: SafeAdmin; token: string }> {
     if (!username?.trim() || !password?.trim()) {
       throw new Error("Username and password are required");
     }
 
     const admin = await this.repo.findByUsername(username);
-    if (!admin) {
-      throw new Error("Invalid credentials");
-    }
+    if (!admin) throw new Error("Invalid credentials");
 
     const isValid = await bcrypt.compare(password, admin.password);
-    if (!isValid) {
-      throw new Error("Invalid credentials");
-    }
+    if (!isValid) throw new Error("Invalid credentials");
 
-    // Validasi JWT_SECRET
     const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      throw new Error("JWT_SECRET is not configured");
-    }
+    if (!jwtSecret) throw new Error("JWT_SECRET is not configured");
 
-    // Generate token JWT
     const token = jwt.sign(
       {
-        admin_Id: admin.id,
-        username: admin.username, // Lebih konsisten daripada email
+        admin_Id: admin.id, // now string (cuid)
+        username: admin.username,
       },
       jwtSecret,
       { expiresIn: "24h" }
     );
 
-    // Jangan return password
-    const { password: _, ...adminWithoutPassword } = admin;
+    const { password: _pw, ...adminWithoutPassword } = admin;
     return { admin: adminWithoutPassword, token };
   }
 
   // Change password
   async changePassword(
-    id: number,
+    id: string,
     currentPassword: string,
     newPassword: string
   ): Promise<Admin> {
-    // Validasi input
+    if (!id?.trim()) throw new Error("Valid admin ID is required");
     if (!currentPassword || !newPassword) {
       throw new Error("Current and new passwords are required");
     }
@@ -111,34 +100,22 @@ export class AdminAuthService {
       throw new Error("New password must be different from current password");
     }
 
-    // Gunakan method repository yang sudah ada - tidak perlu hash di sini
     return this.repo.changePassword(id, currentPassword, newPassword);
   }
 
   /**
    * Mendapatkan profil admin tanpa password
-   * @param admin_Id ID admin yang terverifikasi
-   * @returns Profil admin atau null
    */
-  async getAdminProfile(
-    admin_Id: number
-  ): Promise<Omit<Admin, "password"> | null> {
-    if (!admin_Id || admin_Id <= 0) {
-      throw new Error("Valid admin ID is required");
-    }
-
+  async getAdminProfile(admin_Id: string): Promise<SafeAdmin | null> {
+    if (!admin_Id?.trim()) throw new Error("Valid admin ID is required");
     return this.repo.getAdminProfile(admin_Id);
   }
 
   /**
    * Update admin profile (tidak termasuk password)
-   * @param id ID admin
-   * @param updateData Data yang akan diupdate
-   * @param imageFile File gambar baru (optional)
-   * @returns Admin yang sudah diupdate
    */
   async updateProfile(
-    id: number,
+    id: string,
     updateData: {
       first_name?: string;
       last_name?: string;
@@ -146,9 +123,9 @@ export class AdminAuthService {
     },
     imageFile?: Express.Multer.File
   ): Promise<Admin> {
-    let imageUrl: string | undefined;
+    if (!id?.trim()) throw new Error("Valid admin ID is required");
 
-    // Upload image baru jika ada
+    let imageUrl: string | undefined;
     if (imageFile) {
       try {
         const fileBase64 = imageFile.buffer.toString("base64");
@@ -158,7 +135,7 @@ export class AdminAuthService {
           folder: "Ardianzy/admins",
         });
         imageUrl = response.url;
-      } catch (error) {
+      } catch {
         throw new Error("Failed to upload image");
       }
     }
@@ -171,22 +148,18 @@ export class AdminAuthService {
 
   /**
    * Verify JWT token
-   * @param token JWT token
-   * @returns Decoded token payload
    */
-  verifyToken(token: string): { admin_Id: number; username: string } {
+  verifyToken(token: string): { admin_Id: string; username: string } {
     const jwtSecret = process.env.JWT_SECRET;
-    if (!jwtSecret) {
-      throw new Error("JWT_SECRET is not configured");
-    }
+    if (!jwtSecret) throw new Error("JWT_SECRET is not configured");
 
     try {
       const decoded = jwt.verify(token, jwtSecret) as {
-        admin_Id: number;
+        admin_Id: string;
         username: string;
       };
       return decoded;
-    } catch (error) {
+    } catch {
       throw new Error("Invalid or expired token");
     }
   }

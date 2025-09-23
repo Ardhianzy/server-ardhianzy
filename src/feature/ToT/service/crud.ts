@@ -14,7 +14,7 @@ interface CreateTotData {
   meta_description?: string;
   keywords?: string;
   is_published?: boolean;
-  admin_id: number;
+  admin_id: string; // ← cuid string
 }
 
 // Interface untuk Update ToT
@@ -61,21 +61,12 @@ export class TotService {
   // Create ToT
   async create(totData: CreateTotData): Promise<ToT> {
     // Validasi input
-    if (!totData.philosofer?.trim()) {
-      throw new Error("Philosofer is required");
-    }
-    if (!totData.geoorigin?.trim()) {
-      throw new Error("Geoorigin is required");
-    }
-    if (!totData.detail_location?.trim()) {
+    if (!totData.philosofer?.trim()) throw new Error("Philosofer is required");
+    if (!totData.geoorigin?.trim()) throw new Error("Geoorigin is required");
+    if (!totData.detail_location?.trim())
       throw new Error("Detail location is required");
-    }
-    if (!totData.years?.trim()) {
-      throw new Error("Years is required");
-    }
-    if (!totData.admin_id) {
-      throw new Error("Admin ID is required");
-    }
+    if (!totData.years?.trim()) throw new Error("Years is required");
+    if (!totData.admin_id?.trim()) throw new Error("Admin ID is required");
 
     let imageUrl: string | undefined;
 
@@ -89,13 +80,13 @@ export class TotService {
           folder: "Ardianzy/tot",
         });
         imageUrl = response.url;
-      } catch (error) {
+      } catch {
         throw new Error("Failed to upload image");
       }
     }
 
     return this.repo.create({
-      admin_id: totData.admin_id,
+      admin_id: totData.admin_id, // ← string
       philosofer: totData.philosofer,
       geoorigin: totData.geoorigin,
       detail_location: totData.detail_location,
@@ -116,62 +107,48 @@ export class TotService {
   }
 
   // Get ToT by ID
-  async getById(id: number): Promise<ToT> {
+  async getById(id: string): Promise<ToT> {
+    if (!id?.trim()) throw new Error("Valid ToT ID is required");
+
     const tot = await this.repo.getById(id);
-    if (!tot) {
-      throw new Error("ToT not found");
-    }
+    if (!tot) throw new Error("ToT not found");
     return tot;
   }
 
   // Get ToT by Philosofer
   async getByPhilosofer(philosofer: string): Promise<ToT> {
-    if (!philosofer?.trim()) {
-      throw new Error("Philosofer name is required");
-    }
+    if (!philosofer?.trim()) throw new Error("Philosofer name is required");
 
     const tot = await this.repo.getByPhilosofer(philosofer);
-    if (!tot) {
-      throw new Error("ToT not found");
-    }
+    if (!tot) throw new Error("ToT not found");
     return tot;
   }
 
   // Update ToT by ID
-  async updateById(id: number, totData: UpdateTotData): Promise<ToT> {
-    // Check if ToT exists
+  async updateById(id: string, totData: UpdateTotData): Promise<ToT> {
+    if (!id?.trim()) throw new Error("Valid ToT ID is required");
+
+    // Pastikan ada datanya
     const existingToT = await this.repo.getById(id);
-    if (!existingToT) {
-      throw new Error("ToT not found");
-    }
+    if (!existingToT) throw new Error("ToT not found");
 
     const updateData: any = {};
 
     // Only update provided fields
-    if (totData.philosofer?.trim()) {
-      updateData.philosofer = totData.philosofer;
-    }
-    if (totData.geoorigin?.trim()) {
-      updateData.geoorigin = totData.geoorigin;
-    }
-    if (totData.detail_location?.trim()) {
-      updateData.detail_location = totData.detail_location;
-    }
-    if (totData.years?.trim()) {
-      updateData.years = totData.years;
-    }
-    if (totData.meta_title?.trim()) {
-      updateData.meta_title = totData.meta_title;
-    }
-    if (totData.meta_description?.trim()) {
-      updateData.meta_description = totData.meta_description;
-    }
-    if (totData.keywords?.trim()) {
-      updateData.keywords = totData.keywords;
-    }
-    if (totData.is_published !== undefined) {
+    if (totData.philosofer?.trim())
+      updateData.philosofer = totData.philosofer.trim();
+    if (totData.geoorigin?.trim())
+      updateData.geoorigin = totData.geoorigin.trim();
+    if (totData.detail_location?.trim())
+      updateData.detail_location = totData.detail_location.trim();
+    if (totData.years?.trim()) updateData.years = totData.years.trim();
+    if (totData.meta_title?.trim())
+      updateData.meta_title = totData.meta_title.trim();
+    if (totData.meta_description?.trim())
+      updateData.meta_description = totData.meta_description.trim();
+    if (totData.keywords?.trim()) updateData.keywords = totData.keywords.trim();
+    if (totData.is_published !== undefined)
       updateData.is_published = totData.is_published;
-    }
 
     // Upload new image if provided
     if (totData.image) {
@@ -183,7 +160,7 @@ export class TotService {
           folder: "Ardianzy/tot",
         });
         updateData.image = response.url;
-      } catch (error) {
+      } catch {
         throw new Error("Failed to upload image");
       }
     }
@@ -192,12 +169,12 @@ export class TotService {
   }
 
   // Delete ToT by ID
-  async deleteById(id: number): Promise<ToT> {
-    // Check if ToT exists
+  async deleteById(id: string): Promise<ToT> {
+    if (!id?.trim()) throw new Error("Valid ToT ID is required");
+
+    // Check exist
     const existingToT = await this.repo.getById(id);
-    if (!existingToT) {
-      throw new Error("ToT not found");
-    }
+    if (!existingToT) throw new Error("ToT not found");
 
     return this.repo.deleteById(id);
   }
