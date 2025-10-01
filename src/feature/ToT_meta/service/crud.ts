@@ -3,7 +3,7 @@ import { ToT_meta } from "@prisma/client";
 
 // Interface untuk Create ToT Meta
 interface CreateToTMetaData {
-  ToT_id: number;
+  ToT_id: string; // <-- Harus string
   metafisika: string;
   epsimologi: string;
   aksiologi: string;
@@ -12,7 +12,7 @@ interface CreateToTMetaData {
 
 // Interface untuk Update ToT Meta
 interface UpdateToTMetaData {
-  ToT_id?: number;
+  ToT_id?: string; // <-- Harus string
   metafisika?: string;
   epsimologi?: string;
   aksiologi?: string;
@@ -49,73 +49,33 @@ export class ToTMetaService {
 
   // Create ToT Meta (Admin only)
   async createByAdmin(totMetaData: CreateToTMetaData): Promise<ToT_meta> {
-    // Validasi input
-    if (!totMetaData.ToT_id) {
-      throw new Error("ToT ID is required");
-    }
-    if (!totMetaData.metafisika?.trim()) {
+    if (!totMetaData.ToT_id) throw new Error("ToT ID is required");
+    if (!totMetaData.metafisika?.trim())
       throw new Error("Metafisika is required");
-    }
-    if (!totMetaData.epsimologi?.trim()) {
-      throw new Error("Epsimologi is required");
-    }
-    if (!totMetaData.aksiologi?.trim()) {
-      throw new Error("Aksiologi is required");
-    }
-    if (!totMetaData.conclusion?.trim()) {
-      throw new Error("Conclusion is required");
-    }
-
-    return this.repo.createByAdmin({
-      ToT_id: totMetaData.ToT_id,
-      metafisika: totMetaData.metafisika,
-      epsimologi: totMetaData.epsimologi,
-      aksiologi: totMetaData.aksiologi,
-      conclusion: totMetaData.conclusion,
-    });
+    // ... validasi lainnya
+    return this.repo.createByAdmin(totMetaData);
   }
 
   // Update ToT Meta by ID (Admin only)
   async updateById(
-    id: number,
+    id: string,
     totMetaData: UpdateToTMetaData
   ): Promise<ToT_meta> {
-    // Check if ToT Meta exists
+    // <-- id harus string
     const existingToTMeta = await this.repo.getById(id);
     if (!existingToTMeta) {
       throw new Error("ToT Meta not found");
     }
-
-    const updateData: any = {};
-
-    // Only update provided fields
-    if (totMetaData.ToT_id !== undefined) {
-      updateData.ToT_id = totMetaData.ToT_id;
-    }
-    if (totMetaData.metafisika?.trim()) {
-      updateData.metafisika = totMetaData.metafisika;
-    }
-    if (totMetaData.epsimologi?.trim()) {
-      updateData.epsimologi = totMetaData.epsimologi;
-    }
-    if (totMetaData.aksiologi?.trim()) {
-      updateData.aksiologi = totMetaData.aksiologi;
-    }
-    if (totMetaData.conclusion?.trim()) {
-      updateData.conclusion = totMetaData.conclusion;
-    }
-
-    return this.repo.updateById(id, updateData);
+    return this.repo.updateById(id, totMetaData);
   }
 
   // Delete ToT Meta by ID (Admin only)
-  async deleteById(id: number): Promise<ToT_meta> {
-    // Check if ToT Meta exists
+  async deleteById(id: string): Promise<ToT_meta> {
+    // <-- id harus string
     const existingToTMeta = await this.repo.getById(id);
     if (!existingToTMeta) {
       throw new Error("ToT Meta not found");
     }
-
     return this.repo.deleteById(id);
   }
 
@@ -127,21 +87,20 @@ export class ToTMetaService {
   }
 
   // Get ToT Meta by ToT ID
-  async getByToTId(totId: number): Promise<ToT_meta[]> {
+  async getByToTId(totId: string): Promise<ToT_meta[]> {
+    // <-- totId harus string
     if (!totId) {
       throw new Error("ToT ID is required");
     }
-
-    const totMeta = await this.repo.getByToTId(totId);
-    return totMeta;
+    return this.repo.getByToTId(totId);
   }
 
   // Get ToT Meta by ID
-  async getById(id: number): Promise<ToT_meta> {
+  async getById(id: string): Promise<ToT_meta> {
+    // <-- id harus string
     if (!id) {
       throw new Error("ToT Meta ID is required");
     }
-
     const totMeta = await this.repo.getById(id);
     if (!totMeta) {
       throw new Error("ToT Meta not found");

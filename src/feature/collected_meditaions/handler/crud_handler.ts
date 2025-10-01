@@ -1,15 +1,15 @@
 import { Request, Response } from "express";
 import { CollectedMeditationsService } from "../service/crud_service";
 
-// Extend Request untuk menambahkan admin dari JWT
+// --- GLOBAL DECLARATION (disarankan: gunakan req.user) ---
 declare global {
   namespace Express {
+    interface UserAuthPayload {
+      admin_Id: string;
+      username: string;
+    }
     interface Request {
-      admin?: {
-        admin_Id: number;
-        user?: any;
-        username: string;
-      };
+      user?: UserAuthPayload; // <-- middleware authenticate mengisi ini
       file?: Express.Multer.File;
     }
   }
@@ -25,22 +25,24 @@ export class CollectedMeditationsHandler {
   // Create Collected Meditations (Admin only)
   createByAdmin = async (req: Request, res: Response): Promise<void> => {
     try {
-      // Debug log
-      console.log("Request body:", req.body);
-      console.log("Request file:", req.file);
-      console.log("Request admin:", req.admin);
+      const adminId = req.user?.admin_Id || (req as any).user?.admin_Id;
+      if (!adminId) {
+        res.status(401).json({ success: false, message: "Unauthorized" });
+        return;
+      }
 
       const newCollectedMeditations =
         await this.collectedMeditationsService.createByAdmin({
-          admin_id: req.admin?.admin_Id ?? 0,
           dialog: req.body.dialog,
           judul: req.body.judul,
           meta_title: req.body.meta_title,
           meta_description: req.body.meta_description,
           is_published:
             req.body.is_published === "true" || req.body.is_published === true,
-          image: req.file,
-        });
+          image: req.file, // biar service yang handle upload -> URL
+          adminId, // <-- kunci: diteruskan ke service
+          // NOTE: slug tidak dikirim; repo sudah auto-generate slug
+        } as any); // cast ringan jika TS complain dari typing bawaan
 
       res.status(201).json({
         success: true,
@@ -61,15 +63,7 @@ export class CollectedMeditationsHandler {
   // Update Collected Meditations by ID (Admin only)
   updateById = async (req: Request, res: Response): Promise<void> => {
     try {
-      const id = parseInt(req.params.id);
-
-      if (isNaN(id)) {
-        res.status(400).json({
-          success: false,
-          message: "Invalid ID format",
-        });
-        return;
-      }
+      const { id } = req.params;
 
       const updateData: any = {
         dialog: req.body.dialog,
@@ -79,7 +73,6 @@ export class CollectedMeditationsHandler {
         image: req.file,
       };
 
-      // Handle is_published if provided
       if (req.body.is_published !== undefined) {
         updateData.is_published =
           req.body.is_published === "true" || req.body.is_published === true;
@@ -98,10 +91,9 @@ export class CollectedMeditationsHandler {
         error instanceof Error &&
         error.message === "Collected Meditations not found"
       ) {
-        res.status(404).json({
-          success: false,
-          message: "Collected Meditations not found",
-        });
+        res
+          .status(404)
+          .json({ success: false, message: "Collected Meditations not found" });
         return;
       }
 
@@ -118,15 +110,7 @@ export class CollectedMeditationsHandler {
   // Delete Collected Meditations by ID (Admin only)
   deleteById = async (req: Request, res: Response): Promise<void> => {
     try {
-      const id = parseInt(req.params.id);
-
-      if (isNaN(id)) {
-        res.status(400).json({
-          success: false,
-          message: "Invalid ID format",
-        });
-        return;
-      }
+      const { id } = req.params;
 
       const deletedCollectedMeditations =
         await this.collectedMeditationsService.deleteById(id);
@@ -137,27 +121,15 @@ export class CollectedMeditationsHandler {
         data: deletedCollectedMeditations,
       });
     } catch (error) {
-      if (error instanceof Error) {
-        if (error.message === "Collected Meditations not found") {
-          res.status(404).json({
-            success: false,
-            message: "Collected Meditations not found",
-          });
-          return;
-        }
-        if (
-          error.message ===
-          "Cannot delete Collected Meditations: it has related records"
-        ) {
-          res.status(400).json({
-            success: false,
-            message:
-              "Cannot delete Collected Meditations: it has related records",
-          });
-          return;
-        }
+      if (
+        error instanceof Error &&
+        error.message === "Collected Meditations not found"
+      ) {
+        res
+          .status(404)
+          .json({ success: false, message: "Collected Meditations not found" });
+        return;
       }
-
       res.status(500).json({
         success: false,
         message:
@@ -173,7 +145,7 @@ export class CollectedMeditationsHandler {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
-      const sortBy = (req.query.sortBy as string) || "id";
+      const sortBy = (req.query.sortBy as string) || "created_at";
       const sortOrder = (req.query.sortOrder as "asc" | "desc") || "desc";
 
       const result = await this.collectedMeditationsService.getAll({
@@ -199,18 +171,40 @@ export class CollectedMeditationsHandler {
     }
   };
 
-  // Get Collected Meditations by judul
+  // Get by ID
+  getById = async (req: Request, res: Response): Promise<void> => {
+    try {
+      const { id } = req.params;
+      const meditation = await this.collectedMeditationsService.getById(id);
+      res.status(200).json({
+        success: true,
+        message: "Collected Meditations retrieved successfully",
+        data: meditation,
+      });
+    } catch (error) {
+      if (
+        error instanceof Error &&
+        error.message === "Collected Meditations not found"
+      ) {
+        res
+          .status(404)
+          .json({ success: false, message: "Collected Meditations not found" });
+        return;
+      }
+      res.status(500).json({
+        success: false,
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to fetch Collected Meditations",
+      });
+    }
+  };
+
+  // Get by judul
   getByJudul = async (req: Request, res: Response): Promise<void> => {
     try {
       const { judul } = req.params;
-
-      if (!judul) {
-        res.status(400).json({
-          success: false,
-          message: "Judul parameter is required",
-        });
-        return;
-      }
 
       const collectedMeditations =
         await this.collectedMeditationsService.getByJudul(judul);
@@ -225,13 +219,11 @@ export class CollectedMeditationsHandler {
         error instanceof Error &&
         error.message === "Collected Meditations not found"
       ) {
-        res.status(404).json({
-          success: false,
-          message: "Collected Meditations not found",
-        });
+        res
+          .status(404)
+          .json({ success: false, message: "Collected Meditations not found" });
         return;
       }
-
       res.status(500).json({
         success: false,
         message:

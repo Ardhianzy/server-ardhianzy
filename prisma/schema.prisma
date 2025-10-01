@@ -73,8 +73,8 @@ model Reading_guidline {
   publisher String
   year      String
   detailed  String
-
-  tot ToT @relation(fields: [ToT_id], references: [id], name: "ToT_guide")
+  category  String
+  tot       ToT    @relation(fields: [ToT_id], references: [id], name: "ToT_guide")
 
   @@map("reading_guidline")
 }

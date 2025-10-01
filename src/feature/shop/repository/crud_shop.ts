@@ -23,7 +23,7 @@ interface PaginatedResult<T> {
 }
 
 export interface CreateShopData {
-  admin_id: string; // ← cuid string
+  admin_id: string;
   stock: string;
   title: string;
   category: string;

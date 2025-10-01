@@ -1,8 +1,7 @@
 import { Glosarium } from "@prisma/client";
 import {
   GlosariumRepository,
-  CreateGlosariumData,
-  UpdateGlosariumData,
+  UpdateGlosariumData, // CreateGlosariumData dari repo tidak perlu diimpor di sini
 } from "../repository/crud_glo";
 
 // Interface untuk pagination
@@ -25,7 +24,7 @@ interface PaginatedResult<T> {
   };
 }
 
-// Interface untuk Create Glosarium
+// Interface untuk Create Glosarium di level Service
 interface CreateGlosariumServiceData {
   term: string;
   definition: string;
@@ -36,21 +35,10 @@ interface CreateGlosariumServiceData {
   examples?: string;
   related_terms?: string;
   is_published?: boolean;
-  admin_id: number;
 }
 
-// Interface untuk Update Glosarium
-interface UpdateGlosariumServiceData {
-  term?: string;
-  definition?: string;
-  meta_title?: string;
-  meta_description?: string;
-  keywords?: string;
-  etymology?: string;
-  examples?: string;
-  related_terms?: string;
-  is_published?: boolean;
-}
+// Interface untuk Update Glosarium di level Service
+interface UpdateGlosariumServiceData extends UpdateGlosariumData {} // Bisa langsung extend dari repo
 
 export class GlosariumService {
   private repo: GlosariumRepository;
@@ -60,26 +48,24 @@ export class GlosariumService {
   }
 
   /**
-   * Create a new Glosarium (Admin only)
-   * @param glosariumData - Data untuk membuat Glosarium baru
-   * @returns Promise<Glosarium> - Record Glosarium yang baru dibuat
+   * Create a new Glosarium
+   * @param adminId - ID admin dari token JWT
+   * @param glosariumBody - Data dari request body
+   * @returns Promise<Glosarium>
    */
-  async createByAdminId(
-    glosariumData: CreateGlosariumServiceData
+  async create(
+    adminId: string, // <-- PERUBAHAN: Terima adminId sebagai argumen
+    glosariumBody: CreateGlosariumServiceData // <-- PERUBAHAN: Gunakan interface baru tanpa admin_id
   ): Promise<Glosarium> {
     try {
-      return this.repo.createByAdminId({
-        admin_id: glosariumData.admin_id,
-        term: glosariumData.term,
-        definition: glosariumData.definition,
-        meta_title: glosariumData.meta_title,
-        meta_description: glosariumData.meta_description,
-        keywords: glosariumData.keywords,
-        etymology: glosariumData.etymology,
-        examples: glosariumData.examples,
-        related_terms: glosariumData.related_terms,
-        is_published: glosariumData.is_published,
-      });
+      // Gabungkan adminId dengan data body sebelum dikirim ke repository
+      const completeData = {
+        ...glosariumBody,
+        admin_id: adminId,
+      };
+
+      // Panggil repository dengan data yang sudah lengkap
+      return this.repo.create(completeData);
     } catch (error) {
       throw new Error(
         `Failed to create Glosarium: ${
@@ -132,7 +118,7 @@ export class GlosariumService {
    * @returns Promise<Glosarium> - Record Glosarium yang telah diupdate
    */
   async updateById(
-    id: number,
+    id: string, // <-- PERUBAHAN: dari number ke string
     glosariumData: UpdateGlosariumServiceData
   ): Promise<Glosarium> {
     try {
@@ -151,7 +137,8 @@ export class GlosariumService {
    * @param id - ID dari Glosarium yang akan dihapus
    * @returns Promise<Glosarium> - Record Glosarium yang telah dihapus
    */
-  async deleteById(id: number): Promise<Glosarium> {
+  async deleteById(id: string): Promise<Glosarium> {
+    // <-- PERUBAHAN: dari number ke string
     try {
       return await this.repo.deleteById(id);
     } catch (error) {

@@ -1,7 +1,7 @@
 import prisma from "../../../config/db";
 import { ToT_meta, Prisma } from "@prisma/client";
 
-// Interface untuk pagination
+// Interface untuk pagination (Tidak ada perubahan)
 interface PaginationParams {
   page?: number;
   limit?: number;
@@ -21,8 +21,10 @@ interface PaginatedResult<T> {
   };
 }
 
+// --- INTERFACE DIUBAH ---
 export interface CreateToTMetaData {
-  ToT_id: number;
+  // CHANGED: ToT_id diubah dari number menjadi string agar sesuai schema
+  ToT_id: string;
   metafisika: string;
   epsimologi: string;
   aksiologi: string;
@@ -30,7 +32,8 @@ export interface CreateToTMetaData {
 }
 
 export interface UpdateToTMetaData {
-  ToT_id?: number;
+  // CHANGED: ToT_id diubah dari number menjadi string agar sesuai schema
+  ToT_id?: string;
   metafisika?: string;
   epsimologi?: string;
   aksiologi?: string;
@@ -45,7 +48,7 @@ export class ToTMetaRepository {
    */
   async createByAdmin(dataToTMeta: CreateToTMetaData): Promise<ToT_meta> {
     try {
-      // Verify that ToT exists
+      // Cek apakah ToT dengan ID string tersebut ada
       const totExists = await prisma.toT.findUnique({
         where: { id: dataToTMeta.ToT_id },
       });
@@ -86,11 +89,12 @@ export class ToTMetaRepository {
    * @returns Promise<ToT_meta> - Record ToT Meta yang telah diupdate
    */
   async updateById(
-    id: number,
+    // CHANGED: Tipe 'id' diubah dari number menjadi string
+    id: string,
     dataToTMeta: UpdateToTMetaData
   ): Promise<ToT_meta> {
     try {
-      // If ToT_id is being updated, verify the new ToT exists
+      // Jika ToT_id diupdate, verifikasi ToT baru ada
       if (dataToTMeta.ToT_id) {
         const totExists = await prisma.toT.findUnique({
           where: { id: dataToTMeta.ToT_id },
@@ -138,7 +142,8 @@ export class ToTMetaRepository {
    * @param id - ID dari ToT Meta yang akan dihapus
    * @returns Promise<ToT_meta> - Record ToT Meta yang telah dihapus
    */
-  async deleteById(id: number): Promise<ToT_meta> {
+  // CHANGED: Tipe 'id' diubah dari number menjadi string
+  async deleteById(id: string): Promise<ToT_meta> {
     try {
       const deletedToTMeta = await prisma.toT_meta.delete({
         where: { id },
@@ -173,22 +178,18 @@ export class ToTMetaRepository {
   }
 
   /**
-   * Get all ToT Meta records with pagination
-   * @param paginationParams - Parameters untuk pagination
-   * @returns Promise<PaginatedResult<ToT_meta>> - Data dengan informasi pagination
+   * Get all ToT Meta records with pagination (Tidak ada perubahan)
    */
   async getAll(
     paginationParams: PaginationParams = {}
   ): Promise<PaginatedResult<ToT_meta>> {
     try {
-      // Default values untuk pagination
       const page = Math.max(1, paginationParams.page || 1);
-      const limit = Math.min(100, Math.max(1, paginationParams.limit || 10)); // Max 100 records per page
+      const limit = Math.min(100, Math.max(1, paginationParams.limit || 10));
       const skip = (page - 1) * limit;
       const sortBy = paginationParams.sortBy || "id";
       const sortOrder = paginationParams.sortOrder || "desc";
 
-      // Execute queries secara parallel untuk performa yang lebih baik
       const [data, total] = await Promise.all([
         prisma.toT_meta.findMany({
           skip,
@@ -237,7 +238,8 @@ export class ToTMetaRepository {
    * @param totId - ToT ID dari ToT Meta yang ingin diambil
    * @returns Promise<ToT_meta[]> - Array of ToT Meta records untuk ToT tertentu
    */
-  async getByToTId(totId: number): Promise<ToT_meta[]> {
+  // CHANGED: Tipe 'totId' diubah dari number menjadi string
+  async getByToTId(totId: string): Promise<ToT_meta[]> {
     try {
       const totMeta = await prisma.toT_meta.findMany({
         where: { ToT_id: totId },
@@ -267,7 +269,8 @@ export class ToTMetaRepository {
    * @param id - ID dari ToT Meta yang ingin diambil
    * @returns Promise<ToT_meta | null> - Record ToT Meta atau null jika tidak ditemukan
    */
-  async getById(id: number): Promise<ToT_meta | null> {
+  // CHANGED: Tipe 'id' diubah dari number menjadi string
+  async getById(id: string): Promise<ToT_meta | null> {
     try {
       const totMeta = await prisma.toT_meta.findUnique({
         where: { id },

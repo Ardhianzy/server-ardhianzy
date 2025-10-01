@@ -6,7 +6,7 @@ import {
   UtilityFactory,
 } from "../../../utils/slugify";
 
-// Interface untuk pagination
+// Interface untuk pagination (Tidak ada perubahan)
 interface PaginationParams {
   page?: number;
   limit?: number;
@@ -26,14 +26,15 @@ interface PaginatedResult<T> {
   };
 }
 
+// --- UPDATED: tambahkan adminId agar bisa connect relasi ---
 export interface CreateCollectedMeditationsData {
-  admin_id: number;
-  image?: string;
+  image?: string; // NOTE: kalau kamu pakai multer, konversi ke URL di service sebelum kirim ke repo
   dialog: string;
   judul: string;
   meta_title?: string;
   meta_description?: string;
   is_published?: boolean;
+  adminId: string; // <-- WAJIB (ambil dari req.user.admin_Id di handler)
 }
 
 export interface UpdateCollectedMeditationsData {
@@ -52,38 +53,44 @@ export class CollectedMeditationsRepository {
 
   /**
    * Create a new Collected Meditations record (Admin only)
-   * @param dataCollectedMeditations - Data untuk membuat Collected Meditations baru
-   * @returns Promise<Collected_meditations> - Record Collected Meditations yang baru dibuat
    */
   async createByAdmin(
     dataCollectedMeditations: CreateCollectedMeditationsData
   ): Promise<Collected_meditations> {
     try {
-      // Generate unique slug from judul
+      const { adminId, ...pureData } = dataCollectedMeditations;
+      if (!adminId) {
+        throw new Error("Admin ID is required");
+      }
+
       const slug = await this.slugGenerator.generateUniqueSlug(
-        dataCollectedMeditations.judul,
-        "glosarium"
+        pureData.judul,
+        "collected_meditations"
       );
 
-      // Generate SEO meta if not provided
       const seoMeta = this.seoGenerator.generateSEOMeta(
-        dataCollectedMeditations.judul,
-        dataCollectedMeditations.dialog
+        pureData.judul,
+        pureData.dialog
       );
 
       const newCollectedMeditations = await prisma.collected_meditations.create(
         {
           data: {
-            ...dataCollectedMeditations,
+            ...pureData,
             slug,
-            meta_title:
-              dataCollectedMeditations.meta_title || seoMeta.metaTitle,
+            meta_title: pureData.meta_title ?? seoMeta.metaTitle,
             meta_description:
-              dataCollectedMeditations.meta_description ||
-              seoMeta.metaDescription,
+              pureData.meta_description ?? seoMeta.metaDescription,
+
+            // === KUNCI: isi relasi admin ===
+            admin: { connect: { id: adminId } },
+
+            // Alternatif kalau mau pakai scalar langsung:
+            // admin_id: adminId,
           },
         }
       );
+
       return newCollectedMeditations;
     } catch (error) {
       throw new Error(
@@ -96,36 +103,29 @@ export class CollectedMeditationsRepository {
 
   /**
    * Update Collected Meditations by ID (Admin only)
-   * @param id - ID dari Collected Meditations yang akan diupdate
-   * @param dataCollectedMeditations - Data yang akan diupdate
-   * @returns Promise<Collected_meditations> - Record Collected Meditations yang telah diupdate
    */
   async updateById(
-    id: number,
+    id: string,
     dataCollectedMeditations: UpdateCollectedMeditationsData
   ): Promise<Collected_meditations> {
     try {
       let updateData = { ...dataCollectedMeditations };
 
-      // Generate new slug if judul is being updated
       if (dataCollectedMeditations.judul) {
         updateData.slug = await this.slugGenerator.generateUniqueSlug(
           dataCollectedMeditations.judul,
-          "glosarium",
+          "collected_meditations",
           id
         );
       }
 
-      // Generate new SEO meta if judul or dialog is being updated
       if (dataCollectedMeditations.judul || dataCollectedMeditations.dialog) {
-        const currentCollectedMeditations =
-          await prisma.collected_meditations.findUnique({ where: { id } });
-        if (currentCollectedMeditations) {
-          const judul =
-            dataCollectedMeditations.judul || currentCollectedMeditations.judul;
-          const dialog =
-            dataCollectedMeditations.dialog ||
-            currentCollectedMeditations.dialog;
+        const currentData = await prisma.collected_meditations.findUnique({
+          where: { id },
+        });
+        if (currentData) {
+          const judul = dataCollectedMeditations.judul ?? currentData.judul;
+          const dialog = dataCollectedMeditations.dialog ?? currentData.dialog;
           const seoMeta = this.seoGenerator.generateSEOMeta(judul, dialog);
 
           if (!dataCollectedMeditations.meta_title) {
@@ -160,10 +160,8 @@ export class CollectedMeditationsRepository {
 
   /**
    * Delete Collected Meditations by ID (Admin only)
-   * @param id - ID dari Collected Meditations yang akan dihapus
-   * @returns Promise<Collected_meditations> - Record Collected Meditations yang telah dihapus
    */
-  async deleteById(id: number): Promise<Collected_meditations> {
+  async deleteById(id: string): Promise<Collected_meditations> {
     try {
       const deletedCollectedMeditations =
         await prisma.collected_meditations.delete({
@@ -192,28 +190,24 @@ export class CollectedMeditationsRepository {
 
   /**
    * Get all Collected Meditations records with pagination
-   * @param paginationParams - Parameters untuk pagination
-   * @returns Promise<PaginatedResult<Collected_meditations>> - Data dengan informasi pagination
    */
   async getAll(
     paginationParams: PaginationParams = {}
   ): Promise<PaginatedResult<Collected_meditations>> {
     try {
-      // Default values untuk pagination
-      const page = Math.max(1, paginationParams.page || 1);
-      const limit = Math.min(100, Math.max(1, paginationParams.limit || 10)); // Max 100 records per page
+      const page = Math.max(1, paginationParams.page ?? 1);
+      const limit = Math.min(100, Math.max(1, paginationParams.limit ?? 10));
       const skip = (page - 1) * limit;
-      const sortBy = paginationParams.sortBy || "id";
-      const sortOrder = paginationParams.sortOrder || "desc";
+      const sortBy = paginationParams.sortBy ?? "created_at";
+      const sortOrder = paginationParams.sortOrder ?? "desc";
 
-      // Execute queries secara parallel untuk performa yang lebih baik
       const [data, total] = await Promise.all([
         prisma.collected_meditations.findMany({
           skip,
           take: limit,
-          orderBy: {
-            [sortBy]: sortOrder,
-          },
+          orderBy: { [sortBy]: sortOrder },
+          // (opsional) include admin agar bisa lihat pemilik:
+          // include: { admin: { select: { id: true, username: true } } },
         }),
         prisma.collected_meditations.count(),
       ]);
@@ -242,8 +236,6 @@ export class CollectedMeditationsRepository {
 
   /**
    * Get Collected Meditations by judul
-   * @param judul - Judul dari Collected Meditations yang ingin diambil
-   * @returns Promise<Collected_meditations | null> - Record Collected Meditations atau null jika tidak ditemukan
    */
   async getByJudul(judul: string): Promise<Collected_meditations | null> {
     try {
@@ -256,6 +248,22 @@ export class CollectedMeditationsRepository {
     } catch (error) {
       throw new Error(
         `Failed to get Collected Meditations by judul: ${
+          error instanceof Error ? error.message : "Unknown error"
+        }`
+      );
+    }
+  }
+
+  async getById(id: string): Promise<Collected_meditations | null> {
+    try {
+      const meditation = await prisma.collected_meditations.findUnique({
+        where: { id },
+        // include: { admin: true }, // opsional
+      });
+      return meditation;
+    } catch (error) {
+      throw new Error(
+        `Failed to get Collected Meditations by ID: ${
           error instanceof Error ? error.message : "Unknown error"
         }`
       );

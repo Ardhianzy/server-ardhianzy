@@ -6,7 +6,7 @@ declare global {
   namespace Express {
     interface Request {
       admin?: {
-        admin_Id: number;
+        admin_Id: string;
         user?: any;
         username: string;
       };
@@ -25,12 +25,9 @@ export class ToTMetaHandler {
   // Create ToT Meta (Admin only)
   createByAdmin = async (req: Request, res: Response): Promise<void> => {
     try {
-      // Debug log
-      console.log("Request body:", req.body);
-      console.log("Request admin:", req.admin);
-
       const newToTMeta = await this.totMetaService.createByAdmin({
-        ToT_id: parseInt(req.body.ToT_id),
+        // CHANGED: Removed parseInt, as ToT_id is a String (CUID)
+        ToT_id: req.body.ToT_id,
         metafisika: req.body.metafisika,
         epsimologi: req.body.epsimologi,
         aksiologi: req.body.aksiologi,
@@ -54,15 +51,8 @@ export class ToTMetaHandler {
   // Update ToT Meta by ID (Admin only)
   updateById = async (req: Request, res: Response): Promise<void> => {
     try {
-      const id = parseInt(req.params.id);
-
-      if (isNaN(id)) {
-        res.status(400).json({
-          success: false,
-          message: "Invalid ID format",
-        });
-        return;
-      }
+      // CHANGED: Removed parseInt, as 'id' is a String (CUID)
+      const { id } = req.params;
 
       const updateData: any = {
         metafisika: req.body.metafisika,
@@ -73,7 +63,8 @@ export class ToTMetaHandler {
 
       // Handle ToT_id if provided
       if (req.body.ToT_id) {
-        updateData.ToT_id = parseInt(req.body.ToT_id);
+        // CHANGED: Removed parseInt
+        updateData.ToT_id = req.body.ToT_id;
       }
 
       const updatedToTMeta = await this.totMetaService.updateById(
@@ -106,15 +97,8 @@ export class ToTMetaHandler {
   // Delete ToT Meta by ID (Admin only)
   deleteById = async (req: Request, res: Response): Promise<void> => {
     try {
-      const id = parseInt(req.params.id);
-
-      if (isNaN(id)) {
-        res.status(400).json({
-          success: false,
-          message: "Invalid ID format",
-        });
-        return;
-      }
+      // CHANGED: Removed parseInt, as 'id' is a String (CUID)
+      const { id } = req.params;
 
       const deletedToTMeta = await this.totMetaService.deleteById(id);
 
@@ -151,7 +135,7 @@ export class ToTMetaHandler {
     }
   };
 
-  // Get all ToT Meta dengan pagination
+  // Get all ToT Meta dengan pagination (No changes needed)
   getAll = async (req: Request, res: Response): Promise<void> => {
     try {
       const page = parseInt(req.query.page as string) || 1;
@@ -185,18 +169,10 @@ export class ToTMetaHandler {
   // Get ToT Meta by ToT ID
   getByToTId = async (req: Request, res: Response): Promise<void> => {
     try {
+      // CHANGED: Removed parseInt, as 'totId' is a String (CUID)
       const { totId } = req.params;
-      const totIdNumber = parseInt(totId);
 
-      if (isNaN(totIdNumber)) {
-        res.status(400).json({
-          success: false,
-          message: "Invalid ToT ID format",
-        });
-        return;
-      }
-
-      const totMeta = await this.totMetaService.getByToTId(totIdNumber);
+      const totMeta = await this.totMetaService.getByToTId(totId);
 
       res.status(200).json({
         success: true,
@@ -215,18 +191,10 @@ export class ToTMetaHandler {
   // Get ToT Meta by ID
   getById = async (req: Request, res: Response): Promise<void> => {
     try {
+      // CHANGED: Removed parseInt, as 'id' is a String (CUID)
       const { id } = req.params;
-      const idNumber = parseInt(id);
 
-      if (isNaN(idNumber)) {
-        res.status(400).json({
-          success: false,
-          message: "Invalid ID format",
-        });
-        return;
-      }
-
-      const totMeta = await this.totMetaService.getById(idNumber);
+      const totMeta = await this.totMetaService.getById(id);
 
       res.status(200).json({
         success: true,

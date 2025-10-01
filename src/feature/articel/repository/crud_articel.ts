@@ -10,7 +10,7 @@ import {
 interface PaginationParams {
   page?: number;
   limit?: number;
-  sortBy?: string;
+  sortBy?: keyof Article; // batasi ke kolom valid
   sortOrder?: "asc" | "desc";
 }
 
@@ -26,19 +26,21 @@ interface PaginatedResult<T> {
   };
 }
 
+// ==== Data Contracts disesuaikan schema ====
+// - id & admin_id -> string (cuid / uuid)
+// - hapus featured_image_alt karena tidak ada di schema
 export interface CreateArticleData {
-  admin_id: number;
+  admin_id: string;
   title: string;
   image: string;
   content: string;
   author: string;
-  date: Date;
-  meta_title?: string;
-  meta_description?: string;
-  keywords?: string;
-  excerpt?: string;
-  featured_image_alt?: string;
-  canonical_url?: string;
+  date: Date; // atau string ISO yang nanti di-cast
+  meta_title?: string | null;
+  meta_description?: string | null;
+  keywords?: string | null;
+  excerpt?: string | null;
+  canonical_url?: string | null;
   is_published?: boolean;
   is_featured?: boolean;
 }
@@ -50,35 +52,38 @@ export interface UpdateArticleData {
   content?: string;
   author?: string;
   date?: Date;
-  meta_title?: string;
-  meta_description?: string;
-  keywords?: string;
-  excerpt?: string;
-  featured_image_alt?: string;
-  canonical_url?: string;
+  meta_title?: string | null;
+  meta_description?: string | null;
+  keywords?: string | null;
+  excerpt?: string | null;
+  canonical_url?: string | null;
   is_published?: boolean;
   is_featured?: boolean;
   view_count?: number;
 }
 
 export class ArticleRepository {
-  private slugGenerator = UtilityFactory.getSlugGenerator();
-  private seoGenerator = UtilityFactory.getSEOGenerator();
+  private slugGenerator: SlugGenerator = UtilityFactory.getSlugGenerator();
+  private seoGenerator: SEOMetaGenerator = UtilityFactory.getSEOGenerator();
 
   /**
    * Create a new Article record (Admin only)
-   * @param dataArticle - Data untuk membuat Article baru
-   * @returns Promise<Article> - Record Article yang baru dibuat
    */
   async createByAdmin(dataArticle: CreateArticleData): Promise<Article> {
     try {
+      // Pastikan date dalam tipe Date
+      const theDate =
+        dataArticle.date instanceof Date
+          ? dataArticle.date
+          : new Date(dataArticle.date);
+
       // Generate unique slug from title
       const slug = await this.slugGenerator.generateUniqueSlug(
         dataArticle.title,
         "article"
       );
 
-      // Generate SEO meta if not provided
+      // Generate SEO meta jika tidak disediakan
       const seoMeta = this.seoGenerator.generateSEOMeta(
         dataArticle.title,
         dataArticle.content
@@ -86,13 +91,27 @@ export class ArticleRepository {
 
       const newArticle = await prisma.article.create({
         data: {
-          ...dataArticle,
+          admin_id: dataArticle.admin_id,
+          title: dataArticle.title,
           slug,
-          meta_title: dataArticle.meta_title || seoMeta.metaTitle,
+          image: dataArticle.image,
+          content: dataArticle.content,
+          author: dataArticle.author,
+          date: theDate,
+
+          meta_title: dataArticle.meta_title ?? seoMeta.metaTitle,
           meta_description:
-            dataArticle.meta_description || seoMeta.metaDescription,
+            dataArticle.meta_description ?? seoMeta.metaDescription,
+          keywords: dataArticle.keywords ?? null,
+          excerpt: dataArticle.excerpt ?? null,
+          canonical_url: dataArticle.canonical_url ?? null,
+
+          is_published: dataArticle.is_published ?? false,
+          is_featured: dataArticle.is_featured ?? false,
+          // view_count default 0 dari schema
         },
       });
+
       return newArticle;
     } catch (error) {
       throw new Error(
@@ -105,19 +124,21 @@ export class ArticleRepository {
 
   /**
    * Update Article by ID (Admin only)
-   * @param id - ID dari Article yang akan diupdate
-   * @param dataArticle - Data yang akan diupdate
-   * @returns Promise<Article> - Record Article yang telah diupdate
    */
   async updateById(
-    id: number,
+    id: string,
     dataArticle: UpdateArticleData
   ): Promise<Article> {
     try {
-      let updateData = { ...dataArticle };
+      const updateData: Prisma.ArticleUpdateInput = { ...dataArticle };
 
-      // Generate new slug if title is being updated
-      if (dataArticle.title) {
+      // Normalisasi date jika ada
+      if (dataArticle.date && !(dataArticle.date instanceof Date)) {
+        updateData.date = new Date(dataArticle.date);
+      }
+
+      // Generate slug baru jika title diubah (kecuali user sudah kirim slug manual)
+      if (dataArticle.title && !dataArticle.slug) {
         updateData.slug = await this.slugGenerator.generateUniqueSlug(
           dataArticle.title,
           "article",
@@ -125,20 +146,20 @@ export class ArticleRepository {
         );
       }
 
-      // Generate new SEO meta if title or content is being updated
+      // Generate SEO meta baru jika title/content diubah & meta tidak diisi
       if (dataArticle.title || dataArticle.content) {
         const currentArticle = await prisma.article.findUnique({
           where: { id },
         });
         if (currentArticle) {
-          const title = dataArticle.title || currentArticle.title;
-          const content = dataArticle.content || currentArticle.content;
+          const title = dataArticle.title ?? currentArticle.title;
+          const content = dataArticle.content ?? currentArticle.content;
           const seoMeta = this.seoGenerator.generateSEOMeta(title, content);
 
-          if (!dataArticle.meta_title) {
+          if (dataArticle.meta_title === undefined) {
             updateData.meta_title = seoMeta.metaTitle;
           }
-          if (!dataArticle.meta_description) {
+          if (dataArticle.meta_description === undefined) {
             updateData.meta_description = seoMeta.metaDescription;
           }
         }
@@ -155,6 +176,12 @@ export class ArticleRepository {
         if (error.code === "P2025") {
           throw new Error("Article not found");
         }
+        if (error.code === "P2002") {
+          // unique constraint (mis. slug)
+          throw new Error(
+            "Duplicate value on a unique field (e.g., slug already exists)"
+          );
+        }
       }
       throw new Error(
         `Failed to update Article: ${
@@ -166,15 +193,12 @@ export class ArticleRepository {
 
   /**
    * Delete Article by ID (Admin only)
-   * @param id - ID dari Article yang akan dihapus
-   * @returns Promise<Article> - Record Article yang telah dihapus
    */
-  async deleteById(id: number): Promise<Article> {
+  async deleteById(id: string): Promise<Article> {
     try {
       const deletedArticle = await prisma.article.delete({
         where: { id },
       });
-
       return deletedArticle;
     } catch (error) {
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
@@ -195,28 +219,42 @@ export class ArticleRepository {
 
   /**
    * Get all Article records with pagination
-   * @param paginationParams - Parameters untuk pagination
-   * @returns Promise<PaginatedResult<Article>> - Data dengan informasi pagination
    */
   async getAll(
     paginationParams: PaginationParams = {}
   ): Promise<PaginatedResult<Article>> {
     try {
-      // Default values untuk pagination
-      const page = Math.max(1, paginationParams.page || 1);
-      const limit = Math.min(100, Math.max(1, paginationParams.limit || 10)); // Max 100 records per page
+      const page = Math.max(1, paginationParams.page ?? 1);
+      const limit = Math.min(100, Math.max(1, paginationParams.limit ?? 10));
       const skip = (page - 1) * limit;
-      const sortBy = paginationParams.sortBy || "id";
-      const sortOrder = paginationParams.sortOrder || "desc";
 
-      // Execute queries secara parallel untuk performa yang lebih baik
+      // Batasi kolom sort ke kolom yang ada pada model Article
+      // (opsional: whitelist manual untuk keamanan ekstra)
+      const validSortBy: (keyof Article)[] = [
+        "id",
+        "title",
+        "slug",
+        "author",
+        "date",
+        "created_at",
+        "updated_at",
+        "is_published",
+        "is_featured",
+        "view_count",
+      ];
+      const sortBy = (
+        paginationParams.sortBy && validSortBy.includes(paginationParams.sortBy)
+          ? paginationParams.sortBy
+          : "created_at"
+      ) as keyof Article;
+
+      const sortOrder = paginationParams.sortOrder ?? "desc";
+
       const [data, total] = await Promise.all([
         prisma.article.findMany({
           skip,
           take: limit,
-          orderBy: {
-            [sortBy]: sortOrder,
-          },
+          orderBy: { [sortBy]: sortOrder },
         }),
         prisma.article.count(),
       ]);
@@ -245,8 +283,6 @@ export class ArticleRepository {
 
   /**
    * Get Article by title
-   * @param title - Title dari Article yang ingin diambil
-   * @returns Promise<Article | null> - Record Article atau null jika tidak ditemukan
    */
   async getByTitle(title: string): Promise<Article | null> {
     try {

@@ -9,27 +9,25 @@ export class GlosariumHandler {
     this.service = new GlosariumService();
   }
 
-  /**
-   * Create a new Glosarium (Admin only)
-   * @param req - Express Request
-   * @param res - Express Response
-   */
-  async createByAdminId(req: Request, res: Response): Promise<void> {
+  async create(req: Request, res: Response): Promise<void> {
     try {
-      // Check validation errors
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
-        res.status(400).json({
+        res.status(400).json({});
+        return;
+      }
+      const adminId = req.user?.admin_Id;
+      if (!adminId) {
+        res.status(401).json({
           success: false,
-          message: "Validation failed",
-          errors: errors.array(),
+          message: "Authentication failed: User ID not found in token.",
         });
         return;
       }
 
-      const glosariumData = req.body;
+      const glosariumBody = req.body;
 
-      const newGlosarium = await this.service.createByAdminId(glosariumData);
+      const newGlosarium = await this.service.create(adminId, glosariumBody);
 
       res.status(201).json({
         success: true,
@@ -45,16 +43,11 @@ export class GlosariumHandler {
     }
   }
 
-  /**
-   * Get all Glosarium with pagination
-   * @param req - Express Request
-   * @param res - Express Response
-   */
   async getAll(req: Request, res: Response): Promise<void> {
     try {
       const page = parseInt(req.query.page as string) || 1;
       const limit = parseInt(req.query.limit as string) || 10;
-      const sortBy = (req.query.sortBy as string) || "id";
+      const sortBy = (req.query.sortBy as string) || "created_at";
       const sortOrder = (req.query.sortOrder as "asc" | "desc") || "desc";
 
       const paginationParams = {
@@ -81,11 +74,6 @@ export class GlosariumHandler {
     }
   }
 
-  /**
-   * Get Glosarium by definition
-   * @param req - Express Request
-   * @param res - Express Response
-   */
   async getByDefinition(req: Request, res: Response): Promise<void> {
     try {
       const { definition } = req.params;
@@ -122,14 +110,8 @@ export class GlosariumHandler {
     }
   }
 
-  /**
-   * Update Glosarium by ID (Admin only)
-   * @param req - Express Request
-   * @param res - Express Response
-   */
   async updateById(req: Request, res: Response): Promise<void> {
     try {
-      // Check validation errors
       const errors = validationResult(req);
       if (!errors.isEmpty()) {
         res.status(400).json({
@@ -139,24 +121,18 @@ export class GlosariumHandler {
         });
         return;
       }
-
       const { id } = req.params;
-      const glosariumId = parseInt(id);
-
-      if (isNaN(glosariumId)) {
+      if (!id) {
         res.status(400).json({
           success: false,
-          message: "Invalid glosarium ID",
+          message: "Glosarium ID is required",
         });
         return;
       }
 
       const updateData = req.body;
 
-      const updatedGlosarium = await this.service.updateById(
-        glosariumId,
-        updateData
-      );
+      const updatedGlosarium = await this.service.updateById(id, updateData);
 
       res.status(200).json({
         success: true,
@@ -180,25 +156,18 @@ export class GlosariumHandler {
     }
   }
 
-  /**
-   * Delete Glosarium by ID (Admin only)
-   * @param req - Express Request
-   * @param res - Express Response
-   */
   async deleteById(req: Request, res: Response): Promise<void> {
     try {
       const { id } = req.params;
-      const glosariumId = parseInt(id);
-
-      if (isNaN(glosariumId)) {
+      if (!id) {
         res.status(400).json({
           success: false,
-          message: "Invalid glosarium ID",
+          message: "Glosarium ID is required",
         });
         return;
       }
 
-      const deletedGlosarium = await this.service.deleteById(glosariumId);
+      const deletedGlosarium = await this.service.deleteById(id);
 
       res.status(200).json({
         success: true,

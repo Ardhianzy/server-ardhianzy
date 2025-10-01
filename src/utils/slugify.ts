@@ -1,6 +1,12 @@
 import prisma from "../config/db";
 
-export type ModelType = "research" | "article" | "shop" | "tot" | "glosarium";
+export type ModelType =
+  | "research"
+  | "article"
+  | "shop"
+  | "tot"
+  | "glosarium"
+  | "collected_meditations";
 
 export interface SEOMetaResult {
   metaTitle: string;
@@ -80,6 +86,8 @@ class DatabaseSlugChecker {
       shop: () => prisma.shop.findFirst({ where }),
       tot: () => prisma.toT.findFirst({ where }),
       glosarium: () => prisma.glosarium.findFirst({ where }),
+      collected_meditations: () =>
+        prisma.collected_meditations.findFirst({ where }),
     };
 
     try {

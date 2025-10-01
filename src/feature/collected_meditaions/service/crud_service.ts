@@ -4,6 +4,7 @@ import imagekit from "../../../libs/imageKit";
 import path from "path";
 
 // Interface untuk Create Collected Meditations
+// ⬇️ Tambah adminId agar bisa connect ke Admin di repository
 interface CreateCollectedMeditationsData {
   image?: Express.Multer.File;
   dialog: string;
@@ -11,7 +12,7 @@ interface CreateCollectedMeditationsData {
   meta_title?: string;
   meta_description?: string;
   is_published?: boolean;
-  admin_id: number;
+  adminId: string; // <-- WAJIB (ambil dari req.user.admin_Id di handler)
 }
 
 // Interface untuk Update Collected Meditations
@@ -54,102 +55,67 @@ export class CollectedMeditationsService {
 
   // Create Collected Meditations (Admin only)
   async createByAdmin(
-    collectedMeditationsData: CreateCollectedMeditationsData
+    data: CreateCollectedMeditationsData
   ): Promise<Collected_meditations> {
-    // Validasi input
-    if (!collectedMeditationsData.dialog?.trim()) {
-      throw new Error("Dialog is required");
-    }
-    if (!collectedMeditationsData.judul?.trim()) {
-      throw new Error("Judul is required");
-    }
-    if (!collectedMeditationsData.admin_id) {
-      throw new Error("Admin ID is required");
-    }
+    if (!data.dialog?.trim()) throw new Error("Dialog is required");
+    if (!data.judul?.trim()) throw new Error("Judul is required");
+    if (!data.adminId?.trim()) throw new Error("Admin ID is required");
 
     let imageUrl: string | undefined;
 
-    // Upload image jika ada
-    if (collectedMeditationsData.image) {
+    if (data.image) {
       try {
-        const fileBase64 =
-          collectedMeditationsData.image.buffer.toString("base64");
+        const fileBase64 = data.image.buffer.toString("base64");
         const response = await imagekit.upload({
-          fileName:
-            Date.now() +
-            path.extname(collectedMeditationsData.image.originalname),
+          fileName: Date.now() + path.extname(data.image.originalname),
           file: fileBase64,
           folder: "Ardianzy/collected_meditations",
         });
         imageUrl = response.url;
-      } catch (error) {
+      } catch {
         throw new Error("Failed to upload image");
       }
     }
 
+    // Kirim ke repository termasuk adminId (kunci untuk connect relasi)
     return this.repo.createByAdmin({
-      admin_id: collectedMeditationsData.admin_id,
-      dialog: collectedMeditationsData.dialog,
-      judul: collectedMeditationsData.judul,
-      image: imageUrl,
-      meta_title: collectedMeditationsData.meta_title,
-      meta_description: collectedMeditationsData.meta_description,
-      is_published: collectedMeditationsData.is_published,
+      image: imageUrl, // convert file -> URL string
+      dialog: data.dialog,
+      judul: data.judul,
+      meta_title: data.meta_title,
+      meta_description: data.meta_description,
+      is_published: data.is_published,
+      adminId: data.adminId, // <-- penting
     });
   }
 
   // Update Collected Meditations by ID (Admin only)
   async updateById(
-    id: number,
-    collectedMeditationsData: UpdateCollectedMeditationsData
+    id: string,
+    data: UpdateCollectedMeditationsData
   ): Promise<Collected_meditations> {
-    // Check if Collected Meditations exists
-    const existingCollectedMeditations = await this.repo.getByJudul("");
-    if (!existingCollectedMeditations) {
-      // Verify existence by checking get all and finding by id
-      const allCollectedMeditations = await this.repo.getAll({
-        page: 1,
-        limit: 1,
-      });
-      const found = allCollectedMeditations.data.find((cm) => cm.id === id);
-      if (!found) {
-        throw new Error("Collected Meditations not found");
-      }
-    }
+    await this.getById(id); // Check if data exists, throws error if not
 
-    const updateData: any = {};
+    const updateData: { [key: string]: any } = {};
 
-    // Only update provided fields
-    if (collectedMeditationsData.dialog?.trim()) {
-      updateData.dialog = collectedMeditationsData.dialog;
-    }
-    if (collectedMeditationsData.judul?.trim()) {
-      updateData.judul = collectedMeditationsData.judul;
-    }
-    if (collectedMeditationsData.meta_title?.trim()) {
-      updateData.meta_title = collectedMeditationsData.meta_title;
-    }
-    if (collectedMeditationsData.meta_description?.trim()) {
-      updateData.meta_description = collectedMeditationsData.meta_description;
-    }
-    if (collectedMeditationsData.is_published !== undefined) {
-      updateData.is_published = collectedMeditationsData.is_published;
-    }
+    if (data.dialog?.trim()) updateData.dialog = data.dialog;
+    if (data.judul?.trim()) updateData.judul = data.judul;
+    if (data.meta_title?.trim()) updateData.meta_title = data.meta_title;
+    if (data.meta_description?.trim())
+      updateData.meta_description = data.meta_description;
+    if (data.is_published !== undefined)
+      updateData.is_published = data.is_published;
 
-    // Upload new image if provided
-    if (collectedMeditationsData.image) {
+    if (data.image) {
       try {
-        const fileBase64 =
-          collectedMeditationsData.image.buffer.toString("base64");
+        const fileBase64 = data.image.buffer.toString("base64");
         const response = await imagekit.upload({
-          fileName:
-            Date.now() +
-            path.extname(collectedMeditationsData.image.originalname),
+          fileName: Date.now() + path.extname(data.image.originalname),
           file: fileBase64,
           folder: "Ardianzy/collected_meditations",
         });
         updateData.image = response.url;
-      } catch (error) {
+      } catch {
         throw new Error("Failed to upload image");
       }
     }
@@ -158,19 +124,9 @@ export class CollectedMeditationsService {
   }
 
   // Delete Collected Meditations by ID (Admin only)
-  async deleteById(id: number): Promise<Collected_meditations> {
-    // Check if Collected Meditations exists by trying to get one with similar approach
-    try {
-      return await this.repo.deleteById(id);
-    } catch (error) {
-      if (
-        error instanceof Error &&
-        error.message === "Collected Meditations not found"
-      ) {
-        throw new Error("Collected Meditations not found");
-      }
-      throw error;
-    }
+  async deleteById(id: string): Promise<Collected_meditations> {
+    await this.getById(id); // Check if data exists, throws error if not
+    return this.repo.deleteById(id);
   }
 
   // Get all Collected Meditations dengan pagination
@@ -187,5 +143,14 @@ export class CollectedMeditationsService {
       throw new Error("Collected Meditations not found");
     }
     return collectedMeditations;
+  }
+
+  // Get by ID
+  async getById(id: string): Promise<Collected_meditations> {
+    const meditation = await this.repo.getById(id);
+    if (!meditation) {
+      throw new Error("Collected Meditations not found");
+    }
+    return meditation;
   }
 }

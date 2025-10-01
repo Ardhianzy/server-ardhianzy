@@ -27,7 +27,7 @@ interface PaginatedResult<T> {
 }
 
 export interface CreateGlosariumData {
-  admin_id: number;
+  admin_id: string; // <-- PERUBAHAN: dari number ke string (sesuai CUID)
   term: string;
   definition: string;
   meta_title?: string;
@@ -56,14 +56,20 @@ export class GlosariumRepository {
   private slugGenerator = UtilityFactory.getSlugGenerator();
   private seoGenerator = UtilityFactory.getSEOGenerator();
 
+  // Menambahkan whitelist untuk kolom yang bisa di-sort
+  private readonly sortableFields = new Set<keyof Glosarium | string>([
+    "id",
+    "term",
+    "created_at",
+    "updated_at",
+  ]);
+
   /**
    * Create a new Glosarium record (Admin only)
    * @param dataGlosarium - Data untuk membuat Glosarium baru
    * @returns Promise<Glosarium> - Record Glosarium yang baru dibuat
    */
-  async createByAdminId(
-    dataGlosarium: CreateGlosariumData
-  ): Promise<Glosarium> {
+  async create(dataGlosarium: CreateGlosariumData): Promise<Glosarium> {
     try {
       // Generate unique slug from term
       const slug = await this.slugGenerator.generateUniqueSlug(
@@ -81,9 +87,9 @@ export class GlosariumRepository {
         data: {
           ...dataGlosarium,
           slug,
-          meta_title: dataGlosarium.meta_title || seoMeta.metaTitle,
+          meta_title: dataGlosarium.meta_title ?? seoMeta.metaTitle,
           meta_description:
-            dataGlosarium.meta_description || seoMeta.metaDescription,
+            dataGlosarium.meta_description ?? seoMeta.metaDescription,
         },
       });
       return newGlosarium;
@@ -105,14 +111,17 @@ export class GlosariumRepository {
     paginationParams: PaginationParams = {}
   ): Promise<PaginatedResult<Glosarium>> {
     try {
-      // Default values untuk pagination
       const page = Math.max(1, paginationParams.page || 1);
-      const limit = Math.min(100, Math.max(1, paginationParams.limit || 10)); // Max 100 records per page
+      const limit = Math.min(100, Math.max(1, paginationParams.limit || 10));
       const skip = (page - 1) * limit;
-      const sortBy = paginationParams.sortBy || "id";
+
+      const sortByRaw = paginationParams.sortBy || "created_at";
+      const sortBy = this.sortableFields.has(sortByRaw)
+        ? sortByRaw
+        : "created_at";
+
       const sortOrder = paginationParams.sortOrder || "desc";
 
-      // Execute queries secara parallel untuk performa yang lebih baik
       const [data, total] = await Promise.all([
         prisma.glosarium.findMany({
           skip,
@@ -173,22 +182,20 @@ export class GlosariumRepository {
    * @returns Promise<Glosarium> - Record Glosarium yang telah diupdate
    */
   async updateById(
-    id: number,
+    id: string, // <-- PERUBAHAN: dari number ke string
     dataGlosarium: UpdateGlosariumData
   ): Promise<Glosarium> {
     try {
-      let updateData = { ...dataGlosarium };
+      let updateData: UpdateGlosariumData = { ...dataGlosarium };
 
-      // Generate new slug if term is being updated
       if (dataGlosarium.term) {
         updateData.slug = await this.slugGenerator.generateUniqueSlug(
           dataGlosarium.term,
           "glosarium",
-          id
+          id // excludeId sekarang adalah string
         );
       }
 
-      // Generate new SEO meta if term or definition is being updated
       if (dataGlosarium.term || dataGlosarium.definition) {
         const currentGlosarium = await prisma.glosarium.findUnique({
           where: { id },
@@ -233,7 +240,8 @@ export class GlosariumRepository {
    * @param id - ID dari Glosarium yang akan dihapus
    * @returns Promise<Glosarium> - Record Glosarium yang telah dihapus
    */
-  async deleteById(id: number): Promise<Glosarium> {
+  async deleteById(id: string): Promise<Glosarium> {
+    // <-- PERUBAHAN: dari number ke string
     try {
       const deletedGlosarium = await prisma.glosarium.delete({
         where: { id },
